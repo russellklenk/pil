@@ -68,7 +68,7 @@ typedef struct MEMORY_BLOCK {
     uint64_t                BytesReserved;                                     /* The number of bytes of process address space reserved by the allocation. */
     uint64_t                BlockOffset;                                       /* The allocation offset. This field is set for both host and device memory allocations. */
     uint8_t                *HostAddress;                                       /* The host-visible memory address. This field is set to NULL for device memory allocations. */
-    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory block represents a host or device memory allocation. */
+    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS enumeration. */
     uint32_t                AllocationTag;                                     /* The allocation tag associated with the memory allocator that returned the memory block. */
 } MEMORY_BLOCK;
 
