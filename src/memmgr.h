@@ -19,9 +19,9 @@
  * @param _type A typename, such as int, specifying the type being allocated.
  * @return A pointer to the start of the allocated memory block, or NULL.
  */
-#ifndef PIL_MemoryArenaAllocateHostType
-#define PIL_MemoryArenaAllocateHostType(_arena, _type)                         \
-    ((_type*) PIL_MemoryArenaAllocateHostNoBlock((_arena), sizeof(_type), PIL_ALIGN_OF(_type)))
+#ifndef MemoryArenaAllocateHostType
+#define MemoryArenaAllocateHostType(_arena, _type)                             \
+    ((_type*) MemoryArenaAllocateHost(NULL, (_arena), sizeof(_type), PIL_ALIGN_OF(_type)))
 #endif
 
 /* @summary Allocate memory with the correct size and alignment for an array of instance of a given type from a memory arena.
@@ -30,9 +30,9 @@
  * @param _count The number of elements in the array.
  * @return A pointer to the start of the allocated memory block, or NULL.
  */
-#ifndef PIL_MemoryArenaAllocateHostArray
-#define PIL_MemoryArenaAllocateHostArray(_arena, _type, _count)                \
-    ((_type*) PIL_MemoryArenaAllocateHostNoBlock((_arena), sizeof(_type) * (_count), PIL_ALIGN_OF(_type)))
+#ifndef MemoryArenaAllocateHostArray
+#define MemoryArenaAllocateHostArray(_arena, _type, _count)                    \
+    ((_type*) MemoryArenaAllocateHost(NULL, (_arena), sizeof(_type) * (_count), PIL_ALIGN_OF(_type)))
 #endif
 
 /* @summary Allocate memory with the given object size and alignment for an array of object data from a memory arena.
@@ -42,9 +42,9 @@
  * @param _align The object alignment, in bytes.
  * @return A pointer to the start of the allocated memory block, or NULL.
  */
-#ifndef PIL_MemoryArenaAllocateHostArrayRaw
-#define PIL_MemoryArenaAllocateHostArrayRaw(_arena, _objsize, _align, _count)  \
-    ((uint8_t*) PIL_MemoryArenaAllocateHostNoBlock((_arena), (_objsize) * (_count), (_align)))
+#ifndef MemoryArenaAllocateHostArrayRaw
+#define MemoryArenaAllocateHostArrayRaw(_arena, _objsize, _align, _count)  \
+    ((uint8_t*) MemoryArenaAllocateHost(NULL, (_arena), (_objsize) * (_count), (_align)))
 #endif
 
 /* @summary Forward-declare the types exported by this module.
@@ -64,7 +64,8 @@ typedef union ADDRESS_OR_OFFSET {
 /* @summary Define the data associated with a host or device memory allocation.
  */
 typedef struct MEMORY_BLOCK {
-    uint64_t                SizeInBytes;                                       /* The size of the memory block, in bytes. */
+    uint64_t                BytesCommitted;                                    /* The number of bytes that can be accessed by the application. */
+    uint64_t                BytesReserved;                                     /* The number of bytes of process address space reserved by the allocation. */
     uint64_t                BlockOffset;                                       /* The allocation offset. This field is set for both host and device memory allocations. */
     uint8_t                *HostAddress;                                       /* The host-visible memory address. This field is set to NULL for device memory allocations. */
     uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory block represents a host or device memory allocation. */
@@ -98,11 +99,10 @@ typedef struct MEMORY_ARENA_INIT {
 
 /* @summary Define the data associated with an arena marker, which represents the state of an arena allocator at a specific point in time.
  * The arena can be reset back to a previously defined marker, invalidating all allocations made since the marked point in time.
- * Markers can only be used to mark the state of permanent allocations.
  */
 typedef struct MEMORY_ARENA_MARKER {
-    struct MEMORY_ARENA    *Arena;
-    uint64_t                Offset;
+    struct MEMORY_ARENA    *Arena;                                             /* The MEMORY_ARENA from which the marker was obtained. */
+    uint64_t                State;                                             /* A value encoding the state of the memory arena when the marker was obtained. */
 } MEMORY_ARENA_MARKER;
 
 /* @summary Define the allowed values for memory allocator type. 
@@ -110,8 +110,9 @@ typedef struct MEMORY_ARENA_MARKER {
  */
 typedef enum MEMORY_ALLOCATOR_TYPE {
     MEMORY_ALLOCATOR_TYPE_INVALID           =  0UL,                            /* This value is invalid and should not be used. */
-    MEMORY_ALLOCATOR_TYPE_HOST              =  1UL,                            /* The allocator is a host memory allocator. */
-    MEMORY_ALLOCATOR_TYPE_DEVICE            =  2UL,                            /* The allocator is a device memory allocator. */
+    MEMORY_ALLOCATOR_TYPE_HOST_VMM          =  1UL,                            /* The allocator is a host memory allocator, returning address space from the system virtual memory manager. */
+    MEMORY_ALLOCATOR_TYPE_HOST_HEAP         =  2UL,                            /* The allocator is a host memory allocator, returning address space from the system heap. */
+    MEMORY_ALLOCATOR_TYPE_DEVICE            =  3UL,                            /* The allocator is a device memory allocator. */
 } MEMORY_ALLOCATOR_TYPE;
 
 /* @summary Define various flags that can be bitwise OR'd to control the allocation attributes for a single host memory allocation.
@@ -130,6 +131,228 @@ typedef enum HOST_MEMORY_ALLOCATION_FLAGS {
 #ifndef __cplusplus
 extern "C" {
 #endif
+
+/* @summary Mix the bits in a 32-bit value.
+ * @param input The input value.
+ * @return The input value with its bits mixed.
+ */
+PIL_API(uint32_t)
+BitsMix32
+(
+    uint32_t input
+);
+
+/* @summary Mix the bits in a 64-bit value.
+ * @param input The input value.
+ * @return The input value with its bits mixed.
+ */
+PIL_API(uint64_t)
+BitsMix64
+(
+    uint64_t input
+);
+
+/* @summary Compute a 32-bit non-cryptographic hash of some data.
+ * @param data The data to hash.
+ * @param length The number of bytes of data to hash.
+ * @param seed An initial value used to seed the hash.
+ * @return A 32-bit unsigned integer computed from the data.
+ */
+PIL_API(uint32_t)
+HashData32
+(
+    void const *data, 
+    size_t    length, 
+    uint32_t    seed
+);
+
+/* @summary Compute a 64-bit non-cryptographic hash of some data.
+ * @param data The data to hash.
+ * @param length The number of bytes of data to hash.
+ * @param seed An initial value used to seed the hash.
+ * @return A 64-bit unsigned integer computed from the data.
+ */
+PIL_API(uint64_t)
+HashData64
+(
+    void const *data, 
+    size_t    length, 
+    uint64_t    seed 
+);
+
+/* @summary Allocate memory from the system heap.
+ * @param o_block Pointer to a MEMORY_BLOCK to populate with information about the allocation.
+ * @param n_bytes The minimum number of bytes to allocate.
+ * @param alignment The required alignment, in bytes. The PIL_AlignOf(T) macro can be used to obtain the necessary alignment for a given type. 
+ * @return A pointer to the start of the aligned memory block, or NULL if the allocation request could not be satisfied.
+ */
+PIL_API(void*)
+HostMemoryAllocateHeap
+(
+    struct MEMORY_BLOCK *o_block, 
+    size_t               n_bytes, 
+    size_t             alignment
+);
+
+/* @summary Free a memory block returned from the system heap.
+ * @param host_addr An address returned by HostMemoryAllocateHeap.
+ */
+PIL_API(void)
+HostMemoryFreeHeap
+(
+    void *host_addr
+);
+
+/* @summary Allocate address space from the host virtual memory manager.
+ * The memory block is aligned to at least the operating system page size.
+ * @param o_block Pointer to a MEMORY_BLOCK to populate with information about the allocation.
+ * @param reserve_bytes The number of bytes of process address space to reserve.
+ * @param commit_bytes The number of bytes of process address space to commit. This value can be zero.
+ * @param alloc_flags One or more bitwise OR'd values from the HOST_MEMORY_ALLOCATION_FLAGS enumeration.
+ * @return A pointer to the start of the reserved address space, or NULL if the allocation could not be satisfied.
+ */
+PIL_API(void*)
+HostMemoryReserveAndCommit
+(
+    struct MEMORY_BLOCK *o_block, 
+    size_t         reserve_bytes, 
+    size_t          commit_bytes, 
+    uint32_t         alloc_flags
+);
+
+/* @summary Increase the number of bytes committed in a memory block allocated from the host virtual memory manager.
+ * The commitment is rounded up to the next even multiple of the operating system page size.
+ * @param o_block Pointer to a MEMORY_BLOCK describing the memory block attributes after the commitment increase.
+ * @param block Pointer to a MEMORY_BLOCK describing the memory block attributes prior to the commitment increase.
+ * @param commit_bytes The total amount of address space within the memory block that should be committed, in bytes.
+ * @return true if at least commit_bytes are committed within the memory block, or false if the commitment could not be met.
+ */
+PIL_API(bool)
+HostMemoryIncreaseCommitment
+(
+    struct MEMORY_BLOCK *o_block, 
+    struct MEMORY_BLOCK   *block, 
+    size_t          commit_bytes
+);
+
+/* @summary Flush the host CPU instruction cache after writing dynamically-generated code to a memory block.
+ * @param block Pointer to a MEMORY_BLOCK describing the memory block containing the dynamically-generated code.
+ */
+PIL_API(void)
+HostMemoryFlush
+(
+    struct MEMORY_BLOCK const *block
+);
+
+/* @summary Decommit and release a block of memory returned by the system virtual memory manager.
+ * @param host_addr An address returned by HostMemoryReserveAndCommit.
+ */
+PIL_API(void)
+HostMemoryRelease
+(
+    void *host_addr
+);
+
+/* @summary Check a MEMORY_BLOCK to determine whether it represents a valid allocation (as opposed to a failed allocation).
+ * @param block The MEMORY_BLOCK to inspect.
+ * @return false if block describes a failed allocation.
+ */
+PIL_API(bool)
+MemoryBlockIsValid
+(
+    struct MEMORY_BLOCK const *block
+);
+
+/* @summary Compare two MEMORY_BLOCK instances to determine if a reallocation moved the memory block.
+ * @param old_block A description of the memory block prior to the reallocation.
+ * @param new_block A description of the memory block after the reallocation.
+ * @return true if the memory block moved.
+ */
+PIL_API(bool)
+MemoryBlockDidMove
+(
+    struct MEMORY_BLOCK const *old_block, 
+    struct MEMORY_BLOCK const *new_block
+);
+
+PIL_API(int)
+MemoryArenaCreate
+(
+    struct MEMORY_ARENA         *o_arena, 
+    struct MEMORY_ARENA_INIT const *init
+);
+
+PIL_API(void)
+MemoryArenaDelete
+(
+    struct MEMORY_ARENA *arena
+);
+
+PIL_API(int)
+MemoryArenaAllocate
+(
+    struct MEMORY_BLOCK *o_block, 
+    struct MEMORY_ARENA   *arena, 
+    size_t                  size, 
+    size_t             alignment
+);
+
+PIL_API(void*)
+MemoryArenaAllocateHost
+(
+    struct MEMORY_BLOCK *o_block, 
+    struct MEMORY_ARENA   *arena, 
+    size_t                  size, 
+    size_t             alignment
+);
+
+PIL_API(void*)
+MemoryArenaAllocateHostTemp
+(
+    struct MEMORY_BLOCK *o_block, 
+    struct MEMORY_ARENA   *arena, 
+    size_t                  size, 
+    size_t             alignment
+);
+
+PIL_API(struct MEMORY_ARENA_MARKER)
+MemoryArenaMarkPerm
+(
+    struct MEMORY_ARENA *arena
+);
+
+PIL_API(struct MEMORY_ARENA_MARKER)
+MemoryArenaMarkTemp
+(
+    struct MEMORY_ARENA *arena
+);
+
+PIL_API(uint8_t*)
+MemoryArenaMarkerToHostAddress
+(
+    struct MEMORY_ARENA_MARKER marker
+);
+
+PIL_API(ptrdiff_t)
+MemoryArenaMarkerDifference
+(
+    struct MEMORY_ARENA_MARKER marker1, 
+    struct MEMORY_ARENA_MARKER marker2
+);
+
+PIL_API(void)
+MemoryArenaReset
+(
+    struct MEMORY_ARENA *arena
+);
+
+PIL_API(void)
+MemoryArenaResetToMarker
+(
+    struct MEMORY_ARENA       *arena, 
+    struct MEMORY_ARENA_MARKER *perm, 
+    struct MEMORY_ARENA_MARKER *temp
+);
 
 #ifndef __cplusplus
 }; /* extern "C" */
