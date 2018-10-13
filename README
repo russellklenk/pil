@@ -1,0 +1,8 @@
+GEODE is a library for creating and managing windows, user input, display 
+output and audio input and output. SDL2 is used internally to abstract away 
+the platform differences, and Vulkan is used for rendering and interfacing 
+with the GPU.
+
+GEODE is intended to be used from a higher-level language like Rust, to avoid 
+having to work directly with complex bindings to SDL2 and Vulkan.
+
