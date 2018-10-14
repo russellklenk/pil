@@ -73,28 +73,31 @@ typedef struct MEMORY_BLOCK {
 } MEMORY_BLOCK;
 
 /* @summary Define the data associated with an arena-style memory allocator.
- * The allocator is double-ended, and allocations can be made from either the permanent end or the temporary end.
  */
 typedef struct MEMORY_ARENA {
     char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
-    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
-    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
     uint64_t                MemoryStart;                                       /* The address or offset of the start of the memory block from which sub-allocations are returned. */
-    uint64_t                NextOffsetPerm;                                    /* The byte offset of the next permanent allocation to return. */
-    uint64_t                NextOffsetTemp;                                    /* The byte offset of the start of the most recent temporary allocation. */
+    uint64_t                NextOffset;                                        /* The byte offset of the next permanent allocation to return. */
     uint64_t                MaximumOffset;                                     /* The maximum value of NextOffsetPerm/NextOffsetTemp. */
     uint64_t                NbReserved;                                        /* The number of bytes of reserved address space. */
     uint64_t                NbCommitted;                                       /* The number of bytes of committed address space. */
+    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
+    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
+    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
+    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
 } MEMORY_ARENA;
 
 /* @summary Define the data used to configure an arena-style memory allocator.
  */
 typedef struct MEMORY_ARENA_INIT {
     char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
-    uint64_t                MemorySize;                                        /* The size of the memory block, in bytes. */
+    uint64_t                ReserveSize;                                       /* The number of bytes of address space reserved for the memory block. */
+    uint64_t                CommittedSize;                                     /* The number of bytes of address space committed in the memory block.  */
     ADDRESS_OR_OFFSET       MemoryStart;                                       /* The offset or host address of the start of the allocated memory block. */
     uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
     uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
+    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
+    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
 } MEMORY_ARENA_INIT;
 
 /* @summary Define the data associated with an arena marker, which represents the state of an arena allocator at a specific point in time.
@@ -114,6 +117,14 @@ typedef enum MEMORY_ALLOCATOR_TYPE {
     MEMORY_ALLOCATOR_TYPE_HOST_HEAP         =  2UL,                            /* The allocator is a host memory allocator, returning address space from the system heap. */
     MEMORY_ALLOCATOR_TYPE_DEVICE            =  3UL,                            /* The allocator is a device memory allocator. */
 } MEMORY_ALLOCATOR_TYPE;
+
+/* @summary Define various flags that can be bitwise OR'd to control the behavior of a memory arena allocator.
+ */
+typedef enum MEMORY_ARENA_FLAGS {
+    MEMORY_ARENA_FLAGS_NONE                 = (0UL <<  0),                     /* No flags are specified. Specifying no flags will cause arena creation to fail. */
+    MEMORY_ARENA_FLAG_INTERNAL              = (1UL <<  0),                     /* The memory arena should allocate memory internally, and free the memory when the arena is destroyed. */
+    MEMORY_ARENA_FLAG_EXTERNAL              = (1UL <<  1),                     /* The memory arena uses memory supplied and managed by the application. */
+} MEMORY_ARENA_FLAGS;
 
 /* @summary Define various flags that can be bitwise OR'd to control the allocation attributes for a single host memory allocation.
  */
@@ -275,6 +286,12 @@ MemoryBlockDidMove
     struct MEMORY_BLOCK const *new_block
 );
 
+/* @summary Create a memory arena using the specified configuration.
+ * The memory arena can sub-allocate from either an internal or an external block of memory.
+ * @param o_arena The MEMORY_ARENA to initialize.
+ * @param init Data used to configure the behavior of the memory arena.
+ * @return Zero if the memory arena is successfully created, or -1 if an error occurred.
+ */
 PIL_API(int)
 MemoryArenaCreate
 (
@@ -282,12 +299,23 @@ MemoryArenaCreate
     struct MEMORY_ARENA_INIT const *init
 );
 
+/* @summary Free resources associated with a memory arena.
+ * For a memory arena managing an internal memory block, this frees the memory block.
+ * @param arena The memory arena to delete.
+ */
 PIL_API(void)
 MemoryArenaDelete
 (
     struct MEMORY_ARENA *arena
 );
 
+/* @summary Allocate memory from an arena.
+ * @param o_block Pointer to a MEMORY_BLOCK to populate with information about the allocation.
+ * @param arena The memory arena from which the memory will be allocated.
+ * @param size The minimum number of bytes to allocate.
+ * @param alignment The required alignment of the returned address, in bytes.
+ * @return Zero if the allocation is successful and o_block is populated with information about the allocation, or -1 if the allocation request could not be satisfied.
+ */
 PIL_API(int)
 MemoryArenaAllocate
 (
@@ -297,6 +325,14 @@ MemoryArenaAllocate
     size_t             alignment
 );
 
+/* @summary Allocate host memory from an arena.
+ * The arena must have type MEMORY_ALLOCATOR_TYPE_HOST_HEAP or MEMORY_ALLOCATOR_TYPE_HOST_VMM.
+ * @param o_block Pointer to an optional MEMORY_BLOCK to populate with information about the allocation.
+ * @param arena The memory arena from which the memory will be allocated.
+ * @param size The minimum number of bytes to allocate.
+ * @param alignment The required alignment of the returned address, in bytes.
+ * @return A pointer to the start of the memory block, or NULL if the allocation request could not be satisfied.
+ */
 PIL_API(void*)
 MemoryArenaAllocateHost
 (
@@ -306,33 +342,33 @@ MemoryArenaAllocateHost
     size_t             alignment
 );
 
-PIL_API(void*)
-MemoryArenaAllocateHostTemp
-(
-    struct MEMORY_BLOCK *o_block, 
-    struct MEMORY_ARENA   *arena, 
-    size_t                  size, 
-    size_t             alignment
-);
-
+/* @summary Retrieve a marker representing the state of the memory arena at the time of the call.
+ * @param arena The MEMORY_ARENA whose state will be returned.
+ * @return An object representing the state of the arena at the time of the call, which can be used to invalidate all allocations made after the call.
+ */
 PIL_API(struct MEMORY_ARENA_MARKER)
-MemoryArenaMarkPerm
+MemoryArenaMark
 (
     struct MEMORY_ARENA *arena
 );
 
-PIL_API(struct MEMORY_ARENA_MARKER)
-MemoryArenaMarkTemp
-(
-    struct MEMORY_ARENA *arena
-);
-
+/* @summary Convert a memory arena marker into a valid address within the memory block managed by the arena.
+ * The arena must have type MEMORY_ALLOCATOR_TYPE_HOST_HEAP or MEMORY_ALLOCATOR_TYPE_HOST_VMM.
+ * @param marker The MEMORY_ARENA_MARKER to query.
+ * @return The address in host memory corresponding to the address, or NULL if the marker or arena is invalid.
+ */
 PIL_API(uint8_t*)
 MemoryArenaMarkerToHostAddress
 (
     struct MEMORY_ARENA_MARKER marker
 );
 
+/* @summary Calculate the difference, in bytes, between two memory arena markers.
+ * The markers must have been obtained from the same arena and the arena must have type MEMORY_ALLOCATOR_TYPE_HOST_HEAP or MEMORY_ALLOCATOR_TYPE_HOST_VMM.
+ * @param marker1 A memory arena marker.
+ * @param marker2 A memory arena marker.
+ * @return The number of bytes between the two markers.
+ */
 PIL_API(ptrdiff_t)
 MemoryArenaMarkerDifference
 (
@@ -340,18 +376,25 @@ MemoryArenaMarkerDifference
     struct MEMORY_ARENA_MARKER marker2
 );
 
+/* @summary Reset the state of the memory arena, invalidating all existing allocations.
+ * @param arena The MEMORY_ARENA to reset.
+ */
 PIL_API(void)
 MemoryArenaReset
 (
     struct MEMORY_ARENA *arena
 );
 
+/* @summary Reset the state of the memory arena back to a previously obtained marker.
+ * This invalidates all allocations from the arena made since the marker was obtained.
+ * @param arena The MEMORY_ARENA to reset.
+ * @param marker THe marker representing the reset point.
+ */
 PIL_API(void)
 MemoryArenaResetToMarker
 (
-    struct MEMORY_ARENA       *arena, 
-    struct MEMORY_ARENA_MARKER *perm, 
-    struct MEMORY_ARENA_MARKER *temp
+    struct MEMORY_ARENA        *arena, 
+    struct MEMORY_ARENA_MARKER marker 
 );
 
 #ifndef __cplusplus

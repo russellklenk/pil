@@ -225,27 +225,3 @@ HostMemoryRelease
     VirtualFree(host_addr, 0, MEM_RELEASE);
 }
 
-#if 0
-PIL_API(int)
-MemoryArenaCreate
-(
-    struct MEMORY_ARENA         *o_arena, 
-    struct MEMORY_ARENA_INIT const *init
-);
-
-PIL_API(void)
-MemoryArenaDelete
-(
-    struct MEMORY_ARENA *arena
-);
-
-PIL_API(void*)
-MemoryArenaAllocateHost
-(
-    struct MEMORY_BLOCK *o_block, 
-    struct MEMORY_ARENA   *arena, 
-    size_t                  size, 
-    size_t             alignment
-);
-#endif
-

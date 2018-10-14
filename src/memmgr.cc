@@ -1,5 +1,6 @@
 /**
- * @summary Implement the platform-independent portions of the memory management APIs. 
+ * @summary Implement the platform-independent portions of the memory management
+ * APIs, along with routines for hashing memory blocks. 
  */
 #include <string.h>
 
@@ -256,19 +257,97 @@ HashData64
     return h64;
 }
 
-#if 0
 PIL_API(bool)
 MemoryBlockIsValid
 (
     struct MEMORY_BLOCK const *block
-);
+)
+{
+    return (block->BytesCommitted > 0 || block->BytesReserved > 0);
+}
 
 PIL_API(bool)
 MemoryBlockDidMove
 (
     struct MEMORY_BLOCK const *old_block, 
     struct MEMORY_BLOCK const *new_block
-);
+)
+{
+    return (old_block->HostAddress != new_block->HostAddress);
+}
+
+PIL_API(int)
+MemoryArenaCreate
+(
+    struct MEMORY_ARENA         *o_arena, 
+    struct MEMORY_ARENA_INIT const *init
+)
+{
+    if (init == NULL) {
+        assert(init != NULL);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return -1;
+    }
+    if (init->AllocatorType == MEMORY_ALLOCATOR_TYPE_INVALID) {
+        assert(init->AllocatorType != MEMORY_ALLOCATOR_TYPE_INVALID);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return -1;
+    }
+    if (init->ArenaFlags == MEMORY_ARENA_FLAGS_NONE) {
+        assert(init->ArenaFlags != MEMORY_ARENA_FLAGS_NONE);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return -1;
+    }
+    if (init->ArenaFlags & MEMORY_ARENA_FLAG_EXTERNAL) {
+        if (init->ArenaFlags & MEMORY_ARENA_FLAG_INTERNAL) {
+            assert(0 && "ArenaFlags cannot specify both INTERNAL and EXTERNAL");
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return -1;
+        }
+        if (init->AllocatorType != MEMORY_ALLOCATOR_TYPE_DEVICE) {
+            if (init->MemoryStart.HostAddress == NULL) {
+                assert(init->MemoryStart.HostAddress != NULL);
+                SetLastError(ERROR_INVALID_PARAMETER);
+                return -1;
+            }
+        }
+    }
+    if (init->ArenaFlags & MEMORY_ARENA_FLAG_INTERNAL) {
+        if (init->AllocatorType == MEMORY_ALLOCATOR_TYPE_DEVICE) {
+            assert(0 && "MEMORY_ALLOCATOR_TYPE_DEVICE cannot specify MEMORY_ARENA_FLAG_INTERNAL");
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return -1;
+        }
+    }
+    if (init->ReserveSize == 0 || init->CommittedSize == 0) {
+        assert(init->ReserveSize > 0);
+        assert(init->CommittedSize > 0);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return -1;
+    }
+    if (init->ReserveSize > init->CommittedSize) {
+        assert(init->CommittedSize <= init->ReserveSize);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return -1;
+    }
+}
+typedef struct MEMORY_ARENA_INIT {
+    char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
+    uint64_t                MemorySize;                                        /* The size of the memory block, in bytes. */
+    ADDRESS_OR_OFFSET       MemoryStart;                                       /* The offset or host address of the start of the allocated memory block. */
+    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
+    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
+    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
+    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
+} MEMORY_ARENA_INIT;
+
+PIL_API(void)
+MemoryArenaDelete
+(
+    struct MEMORY_ARENA *arena
+)
+{
+}
 
 PIL_API(int)
 MemoryArenaAllocate
@@ -280,7 +359,7 @@ MemoryArenaAllocate
 );
 
 PIL_API(void*)
-MemoryArenaAllocateHostTemp
+MemoryArenaAllocateHost
 (
     struct MEMORY_BLOCK *o_block, 
     struct MEMORY_ARENA   *arena, 
@@ -289,13 +368,7 @@ MemoryArenaAllocateHostTemp
 );
 
 PIL_API(struct MEMORY_ARENA_MARKER)
-MemoryArenaMarkPerm
-(
-    struct MEMORY_ARENA *arena
-);
-
-PIL_API(struct MEMORY_ARENA_MARKER)
-MemoryArenaMarkTemp
+MemoryArenaMark
 (
     struct MEMORY_ARENA *arena
 );
@@ -322,9 +395,40 @@ MemoryArenaReset
 PIL_API(void)
 MemoryArenaResetToMarker
 (
-    struct MEMORY_ARENA       *arena, 
-    struct MEMORY_ARENA_MARKER *perm, 
-    struct MEMORY_ARENA_MARKER *temp
+    struct MEMORY_ARENA        *arena, 
+    struct MEMORY_ARENA_MARKER marker 
 );
-#endif
+
+typedef struct MEMORY_ARENA {
+    char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
+    uint64_t                MemoryStart;                                       /* The address or offset of the start of the memory block from which sub-allocations are returned. */
+    uint64_t                NextOffset;                                        /* The byte offset of the next permanent allocation to return. */
+    uint64_t                MaximumOffset;                                     /* The maximum value of NextOffsetPerm/NextOffsetTemp. */
+    uint64_t                NbReserved;                                        /* The number of bytes of reserved address space. */
+    uint64_t                NbCommitted;                                       /* The number of bytes of committed address space. */
+    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
+    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
+    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
+    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
+} MEMORY_ARENA;
+
+/* @summary Define the data used to configure an arena-style memory allocator.
+ */
+typedef struct MEMORY_ARENA_INIT {
+    char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
+    uint64_t                MemorySize;                                        /* The size of the memory block, in bytes. */
+    ADDRESS_OR_OFFSET       MemoryStart;                                       /* The offset or host address of the start of the allocated memory block. */
+    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
+    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
+    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
+    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
+} MEMORY_ARENA_INIT;
+
+/* @summary Define the data associated with an arena marker, which represents the state of an arena allocator at a specific point in time.
+ * The arena can be reset back to a previously defined marker, invalidating all allocations made since the marked point in time.
+ */
+typedef struct MEMORY_ARENA_MARKER {
+    struct MEMORY_ARENA    *Arena;                                             /* The MEMORY_ARENA from which the marker was obtained. */
+    uint64_t                State;                                             /* A value encoding the state of the memory arena when the marker was obtained. */
+} MEMORY_ARENA_MARKER;
 
