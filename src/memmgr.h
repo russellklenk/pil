@@ -14,6 +14,21 @@
 #   endif
 #endif
 
+/* @summary Make an AllocatorTag value from four ASCII characters.
+ * @param _a An ASCII character.
+ * @param _b An ASCII character. 
+ * @param _c An ASCII character.
+ * @param _d An ASCII character.
+ * @return A 32-bit unsigned integer value comprised of the given characters.
+ */
+#ifndef MakeAllocatorTag
+#define MakeAllocatorTag(_a, _b, _c, _d)                                       \
+    (((uint32_t)(uint8_t)(_a)      ) |                                         \
+     ((uint32_t)(uint8_t)(_b) <<  8) |                                         \
+     ((uint32_t)(uint8_t)(_c) << 16) |                                         \
+     ((uint32_t)(uint8_t)(_d) << 24))
+#endif
+
 /* @summary Allocate host memory with the correct size and alignment for an instance of a given type from a memory arena.
  * @param _arena The PIL_MEMORY_ARENA from which the allocation is being made.
  * @param _type A typename, such as int, specifying the type being allocated.
@@ -69,7 +84,7 @@ typedef struct MEMORY_BLOCK {
     uint64_t                BlockOffset;                                       /* The allocation offset. This field is set for both host and device memory allocations. */
     uint8_t                *HostAddress;                                       /* The host-visible memory address. This field is set to NULL for device memory allocations. */
     uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS enumeration. */
-    uint32_t                AllocationTag;                                     /* The allocation tag associated with the memory allocator that returned the memory block. */
+    uint32_t                AllocatorTag;                                      /* The tag associated with the memory allocator that returned the memory block. */
 } MEMORY_BLOCK;
 
 /* @summary Define the data associated with an arena-style memory allocator.

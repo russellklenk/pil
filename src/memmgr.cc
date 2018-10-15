@@ -283,31 +283,32 @@ MemoryArenaCreate
     struct MEMORY_ARENA_INIT const *init
 )
 {
-    if (init == NULL) {
+    uint64_t       start = init->MemoryStart.BaseOffset;
+    uint64_t   nb_commit = init->CommittedSize;
+    uint64_t  nb_reserve = init->ReserveSize;
+    uint32_t alloc_flags = init->AllocationFlags;
+
+    if (init == NULL || o_arena == NULL) {
         assert(init != NULL);
-        SetLastError(ERROR_INVALID_PARAMETER);
+        assert(o_arena != NULL);
         return -1;
     }
     if (init->AllocatorType == MEMORY_ALLOCATOR_TYPE_INVALID) {
         assert(init->AllocatorType != MEMORY_ALLOCATOR_TYPE_INVALID);
-        SetLastError(ERROR_INVALID_PARAMETER);
         return -1;
     }
     if (init->ArenaFlags == MEMORY_ARENA_FLAGS_NONE) {
         assert(init->ArenaFlags != MEMORY_ARENA_FLAGS_NONE);
-        SetLastError(ERROR_INVALID_PARAMETER);
         return -1;
     }
     if (init->ArenaFlags & MEMORY_ARENA_FLAG_EXTERNAL) {
         if (init->ArenaFlags & MEMORY_ARENA_FLAG_INTERNAL) {
             assert(0 && "ArenaFlags cannot specify both INTERNAL and EXTERNAL");
-            SetLastError(ERROR_INVALID_PARAMETER);
             return -1;
         }
         if (init->AllocatorType != MEMORY_ALLOCATOR_TYPE_DEVICE) {
             if (init->MemoryStart.HostAddress == NULL) {
                 assert(init->MemoryStart.HostAddress != NULL);
-                SetLastError(ERROR_INVALID_PARAMETER);
                 return -1;
             }
         }
@@ -315,31 +316,50 @@ MemoryArenaCreate
     if (init->ArenaFlags & MEMORY_ARENA_FLAG_INTERNAL) {
         if (init->AllocatorType == MEMORY_ALLOCATOR_TYPE_DEVICE) {
             assert(0 && "MEMORY_ALLOCATOR_TYPE_DEVICE cannot specify MEMORY_ARENA_FLAG_INTERNAL");
-            SetLastError(ERROR_INVALID_PARAMETER);
             return -1;
         }
     }
     if (init->ReserveSize == 0 || init->CommittedSize == 0) {
         assert(init->ReserveSize > 0);
         assert(init->CommittedSize > 0);
-        SetLastError(ERROR_INVALID_PARAMETER);
         return -1;
     }
     if (init->ReserveSize > init->CommittedSize) {
         assert(init->CommittedSize <= init->ReserveSize);
-        SetLastError(ERROR_INVALID_PARAMETER);
         return -1;
     }
+    if (init->ArenaFlags & MEMORY_ARENA_FLAG_INTERNAL) {
+        MEMORY_BLOCK block;
+        void    *host_addr;
+
+        if (init->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_HEAP) {
+            if ((host_addr = HostMemoryAllocateHeap(&block, nb_commit, 16)) == NULL) {
+                return -1;
+            }  alloc_flags = HOST_MEMORY_ALLOCATION_FLAGS_READWRITE;
+        } else if (init->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_VMM) {
+            if ((host_addr = HostMemoryReserveAndCommit(&block, nb_reserve, nb_commit, init->AllocationFlags)) == NULL) {
+                return -1;
+            }  alloc_flags = init->AllocationFlags;
+        } else {
+            assert(init->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_HEAP || init->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_VMM);
+            return -1;
+        }
+        start      =(uint64_t) block.HostAddress;
+        nb_commit  = block.BytesCommitted;
+        nb_reserve = block.BytesReserved;
+    }
+    o_arena->AllocatorName  = init->AllocatorName;
+    o_arena->MemoryStart    = start;
+    o_arena->NextOffset     = 0;
+    o_arena->MaximumOffset  = nb_commit;
+    o_arena->NbReserved     = nb_reserve;
+    o_arena->NbCommitted    = nb_commit;
+    o_arena->AllocatorType  = init->AllocatorType;
+    o_arena->AllocatorTag   = init->AllocatorTag;
+    o_arena->AllocationFlags= alloc_flags;
+    o_arena->ArenaFlags     = init->ArenaFlags;
+    return 0;
 }
-typedef struct MEMORY_ARENA_INIT {
-    char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
-    uint64_t                MemorySize;                                        /* The size of the memory block, in bytes. */
-    ADDRESS_OR_OFFSET       MemoryStart;                                       /* The offset or host address of the start of the allocated memory block. */
-    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
-    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
-    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
-    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
-} MEMORY_ARENA_INIT;
 
 PIL_API(void)
 MemoryArenaDelete
@@ -347,6 +367,23 @@ MemoryArenaDelete
     struct MEMORY_ARENA *arena
 )
 {
+    if (arena) {
+        if (arena->ArenaFlags & MEMORY_ARENA_FLAG_INTERNAL) {
+            if (arena->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_HEAP) {
+                HostMemoryFreeHeap((void*) arena->MemoryStart);
+                arena->MemoryStart = NULL;
+            } else if (arena->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_VMM) {
+                HostMemoryRelease((void*) arena->MemoryStart);
+                arena->MemoryStart = NULL;
+            } else {
+                assert(0 && "Unknown allocator type for INTERNAL arena (memory leak)");
+                return;
+            }
+        }
+        arena->MaximumOffset = 0;
+        arena->NbReserved    = 0;
+        arena->NbCommitted   = 0;
+    }
 }
 
 PIL_API(int)
@@ -356,7 +393,60 @@ MemoryArenaAllocate
     struct MEMORY_ARENA   *arena, 
     size_t                  size, 
     size_t             alignment
-);
+)
+{
+    uint64_t    base_address = arena->MemoryStart + arena->NextOffset;
+    uint64_t aligned_address = base_address != 0 ? PIL_AlignUp(base_address, alignment) : 0;
+    uint64_t     align_bytes = aligned_address - base_address;
+    uint64_t     alloc_bytes = size + align_bytes;
+    uint64_t      new_offset = arena->NextOffset + alloc_bytes;
+
+    assert(o_block != NULL);
+
+    if (new_offset >= arena->MaximumOffset) {
+        /* internal VMM arenas can increase commit */
+        if (arena->NbCommitted  != arena->NbReserved) {
+            uint64_t def_amount  = 128 * 1024; /* grow by 128KB at a time */
+            uint64_t min_amount  = new_offset - arena->NbCommitted;
+            uint64_t max_amount  = arena->NbReserved - arena->NbCommitted;
+            uint64_t new_amount;
+            MEMORY_BLOCK  block;
+
+            block.BytesCommitted = arena->NbCommitted;
+            block.BytesReserved  = arena->NbReserved;
+            block.BlockOffset    = 0;
+            block.HostAddress    =(uint8_t*) arena->MemoryStart;
+            block.AllocationFlags= arena->AllocationFlags;
+            block.AllocatorTag    = arena->AllocatorTag;
+
+            if (min_amount <= max_amount) {
+                if (arena->NbCommitted + def_amount <= max_amount && def_amount > min_amount) {
+                    new_amount = arena->NbCommitted  + def_amount; /* grow by the default amount */
+                } else {
+                    new_amount = arena->NbCommitted  + min_amount; /* grow by the amount we're short */
+                }
+                if (HostMemoryIncreaseCommitment(&block, &block, new_amount)) {
+                    arena->MaximumOffset = block.BytesCommitted;
+                    arena->NbCommitted   = block.BytesCommitted;
+                    assert(arena->NbCommitted <= arena->NbReserved);
+                } else goto allocation_failed; /* commit increase failed */
+            } else goto allocation_failed; /* need more than we can commit */
+        } else goto allocation_failed; /* not enough space */
+    }
+
+    o_block->BytesCommitted  = size;
+    o_block->BytesReserved   = size;
+    o_block->BlockOffset     = arena->NextOffset;
+    o_block->HostAddress     =(uint8_t*) (uintptr_t) aligned_address;
+    o_block->AllocationFlags = arena->AllocationFlags;
+    o_block->AllocatorTag    = arena->AllocatorTag;
+    arena->NextOffset        = new_offset;
+    return  0;
+
+allocation_failed:
+    memset(o_block, 0, sizeof(MEMORY_BLOCK));
+    return -1;
+}
 
 PIL_API(void*)
 MemoryArenaAllocateHost
@@ -365,70 +455,81 @@ MemoryArenaAllocateHost
     struct MEMORY_ARENA   *arena, 
     size_t                  size, 
     size_t             alignment
-);
+)
+{
+    MEMORY_BLOCK block;
+    if (o_block == NULL) {
+        o_block = &block;
+    }
+    if (MemoryArenaAllocate(o_block, arena, size, alignment) == 0) {
+        return o_block->HostAddress;
+    } else {
+        return NULL;
+    }
+}
 
 PIL_API(struct MEMORY_ARENA_MARKER)
 MemoryArenaMark
 (
     struct MEMORY_ARENA *arena
-);
+)
+{
+    MEMORY_ARENA_MARKER m;
+    m.Arena = arena;
+    m.State = arena->NextOffset;
+    return  m;
+}
 
 PIL_API(uint8_t*)
 MemoryArenaMarkerToHostAddress
 (
     struct MEMORY_ARENA_MARKER marker
-);
+)
+{
+    assert(marker.Arena);
+    assert(marker.Arena->MemoryStart   <= marker.State);
+    assert(marker.Arena->MaximumOffset >= marker.State);
+    assert(marker.Arena->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_HEAP || marker.Arena->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_VMM);
+    return(uint8_t*) marker.Arena->MemoryStart + marker.State;
+}
 
 PIL_API(ptrdiff_t)
 MemoryArenaMarkerDifference
 (
     struct MEMORY_ARENA_MARKER marker1, 
     struct MEMORY_ARENA_MARKER marker2
-);
+)
+{
+    assert(marker1.Arena != NULL);
+    assert(marker2.Arena != NULL);
+    assert(marker1.Arena == marker2.Arena);
+    assert(marker1.Arena->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_HEAP || marker1.Arena->AllocatorType == MEMORY_ALLOCATOR_TYPE_HOST_VMM);
+    if (marker1.State < marker2.State) {
+        return marker2.State - marker1.State;
+    } else {
+        return marker1.State - marker2.State;
+    }
+}
 
 PIL_API(void)
 MemoryArenaReset
 (
     struct MEMORY_ARENA *arena
-);
+)
+{
+    arena->NextOffset = 0;
+}
 
 PIL_API(void)
 MemoryArenaResetToMarker
 (
     struct MEMORY_ARENA        *arena, 
     struct MEMORY_ARENA_MARKER marker 
-);
-
-typedef struct MEMORY_ARENA {
-    char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
-    uint64_t                MemoryStart;                                       /* The address or offset of the start of the memory block from which sub-allocations are returned. */
-    uint64_t                NextOffset;                                        /* The byte offset of the next permanent allocation to return. */
-    uint64_t                MaximumOffset;                                     /* The maximum value of NextOffsetPerm/NextOffsetTemp. */
-    uint64_t                NbReserved;                                        /* The number of bytes of reserved address space. */
-    uint64_t                NbCommitted;                                       /* The number of bytes of committed address space. */
-    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
-    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
-    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
-    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
-} MEMORY_ARENA;
-
-/* @summary Define the data used to configure an arena-style memory allocator.
- */
-typedef struct MEMORY_ARENA_INIT {
-    char const             *AllocatorName;                                     /* A nul-terminated string specifying the name of the allocator. Used for debugging. */
-    uint64_t                MemorySize;                                        /* The size of the memory block, in bytes. */
-    ADDRESS_OR_OFFSET       MemoryStart;                                       /* The offset or host address of the start of the allocated memory block. */
-    uint32_t                AllocatorType;                                     /* One of the values of the MEMORY_ALLOCATOR_TYPE enumeration specifying whether the memory allocator allocates host or device memory. */
-    uint32_t                AllocatorTag;                                      /* An opaque 32-bit value used to tag allocations from the arena. */
-    uint32_t                AllocationFlags;                                   /* One or more bitwise-OR'd values of the HOST_MEMORY_ALLOCATION_FLAGS or DEVICE_MEMORY_ALLOCATION_FLAGS enumeration. */
-    uint32_t                ArenaFlags;                                        /* One or more bitwise-OR'd values of the MEMORY_ARENA_FLAGS enumeration. */
-} MEMORY_ARENA_INIT;
-
-/* @summary Define the data associated with an arena marker, which represents the state of an arena allocator at a specific point in time.
- * The arena can be reset back to a previously defined marker, invalidating all allocations made since the marked point in time.
- */
-typedef struct MEMORY_ARENA_MARKER {
-    struct MEMORY_ARENA    *Arena;                                             /* The MEMORY_ARENA from which the marker was obtained. */
-    uint64_t                State;                                             /* A value encoding the state of the memory arena when the marker was obtained. */
-} MEMORY_ARENA_MARKER;
+)
+{
+    assert(arena != NULL);
+    assert(marker.Arena == arena);
+    assert(marker.Arena->NextOffset >= marker.State);
+    arena->NextOffset = marker.State;
+}
 

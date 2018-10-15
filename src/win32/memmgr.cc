@@ -22,7 +22,7 @@ HostMemoryAllocateHeap
             o_block->BlockOffset     = 0;
             o_block->HostAddress     =(uint8_t*) p;
             o_block->AllocationFlags = HOST_MEMORY_ALLOCATION_FLAGS_READWRITE | HOST_MEMORY_ALLOCATION_FLAG_NOGUARD;
-            o_block->AllocationTag   = MAKEFOURCC('H','E','A','P');
+            o_block->AllocatorTag    = MakeAllocatorTag('H','E','A','P');
         } else {
             ZeroMemory(o_block, sizeof(MEMORY_BLOCK));
         }
@@ -110,7 +110,7 @@ HostMemoryReserveAndCommit
         o_block->BlockOffset     = 0;
         o_block->HostAddress     =(uint8_t*) base;
         o_block->AllocationFlags = alloc_flags;
-        o_block->AllocationTag   = MAKEFOURCC('V','M','E','M');
+        o_block->AllocatorTag    = MakeAllocatorTag('V','M','E','M');
     }
     return base;
 
@@ -158,7 +158,7 @@ HostMemoryIncreaseCommitment
     blkofs       = block->BlockOffset;
     address      = block->HostAddress;
     alloc_flags  = block->AllocationFlags;
-    alloc_tag    = block->AllocationTag;
+    alloc_tag    = block->AllocatorTag;
     max_increase = num_reserve  - old_commit;
     req_increase = commit_bytes - old_commit;
 
@@ -192,7 +192,7 @@ HostMemoryIncreaseCommitment
         o_block->BlockOffset     = blkofs;
         o_block->HostAddress     = address;
         o_block->AllocationFlags = alloc_flags;
-        o_block->AllocationTag   = alloc_tag;
+        o_block->AllocatorTag    = alloc_tag;
     }
     return true;
 
