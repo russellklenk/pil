@@ -351,6 +351,20 @@
     (((_objsize) * (_count)) + ((_objalign)-1))
 #endif
 
+/* @summary Forward declarations for types exported from this module.
+ */
+struct PIL_CONTEXT;
+struct PIL_CONTEXT_INIT;
+
+/* @summary Define the data supplied by the application and used to configure the Platform Interface Layer.
+ */
+typedef struct PIL_CONTEXT_INIT {
+    char const *ApplicationName;                                               /* A nul-terminated string specifying the name of the application. Required. */
+    uint32_t    AppVersionMajor;                                               /* The major version component of the application. Required. */
+    uint32_t    AppVersionMinor;                                               /* The minor version component of the application. Required. */
+    uint32_t    AppVersionBugfix;                                              /* The bugfix version component of the application. Required. */
+} PIL_CONTEXT_INIT;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -375,6 +389,27 @@ PIL_API(char const*)
 PIL_GetVersionString
 (
     void
+);
+
+/* @summary Create a Platform Interface Layer context object.
+ * The context object is the application's interface to the Platform Interface Layer.
+ * This enumerates devices installed in the system and allocates memory for internal data structures.
+ * @param init Data used to configure the Platform Interface Layer context, and information about the application.
+ * @return A pointer to the context object, which must be supplied to many PIL entry points.
+ */
+PIL_API(struct PIL_CONTEXT*)
+PIL_ContextCreate
+(
+    struct PIL_CONTEXT_INIT *init
+);
+
+/* @summary Free resources associated with a Platform Interface Layer context object.
+ * @param context The Platform Interface Layer context object to delete.
+ */
+PIL_API(void)
+PIL_ContextDelete
+(
+    struct PIL_CONTEXT* context
 );
 
 #ifdef __cplusplus
