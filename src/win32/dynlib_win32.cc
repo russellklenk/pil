@@ -4,6 +4,15 @@
  */
 #include "dynlib.h"
 
+PIL_API(void)
+RuntimeModuleInit
+(
+    struct RUNTIME_MODULE *module
+)
+{
+    module->Handle = NULL;
+}
+
 PIL_API(int)
 RuntimeModuleLoad
 (
@@ -43,6 +52,10 @@ RuntimeModuleResolve
     char const            *symbol
 )
 {
-    return (PFN_Unknown) GetProcAddress(module->Handle, symbol);
+    if (module->Handle != NULL) {
+        return (PFN_Unknown) GetProcAddress(module->Handle, symbol);
+    } else {
+        return (PFN_Unknown) NULL;
+    }
 }
 

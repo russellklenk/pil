@@ -66,6 +66,15 @@ struct  RUNTIME_MODULE;
 extern "C" {
 #endif
 
+/* @summary Initialize a RUNTIME_MODULE instance such that RuntimeModuleIsValid will return zero.
+ * @param module The RUNTIME_MODULE to initialize.
+ */
+PIL_API(void)
+RuntimeModuleInit
+(
+    struct RUNTIME_MODULE *module
+);
+
 /* @summary Attempt to load a named module into the process address space.
  * @param module On return, the handle of the loaded module is written to this location.
  * @param path The path and filename of the module to load. 
