@@ -11,15 +11,29 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\include\d3d12api_win32.h" />
+    <ClInclude Include="..\..\..\include\d3dcompilerapi_win32.h" />
+    <ClInclude Include="..\..\..\include\dxgiapi_win32.h" />
+    <ClInclude Include="..\..\..\include\dynlib.h" />
+    <ClInclude Include="..\..\..\include\dynlib_win32.h" />
+    <ClInclude Include="..\..\..\include\memmgr.h" />
     <ClInclude Include="..\..\..\include\pil.h" />
     <ClInclude Include="..\..\..\include\pil_win32.h" />
+    <ClInclude Include="..\..\..\include\table.h" />
+    <ClInclude Include="..\..\..\include\win32api_win32.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\context.cc" />
     <ClCompile Include="..\..\..\src\memmgr.cc" />
+    <ClCompile Include="..\..\..\src\table.cc" />
     <ClCompile Include="..\..\..\src\version.cc" />
-    <ClCompile Include="..\..\..\src\win32\display_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\d3d12api_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\d3dcompilerapi_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\dynlib_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\memmgr_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\table_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\win32api_win32.cc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
