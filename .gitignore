@@ -42,6 +42,8 @@ dist
 projects/*/x64
 projects/*/Win32
 projects/*/.vs
+projects/*/*/x64
+projects/*/*/Win32
 bin
 obj
 
