@@ -19,6 +19,12 @@
     <Filter Include="Header Files\win32">
       <UniqueIdentifier>{d1e0ca79-f7c9-4cd2-980e-9865debd597e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\d3d12">
+      <UniqueIdentifier>{51c8e08a-46dc-4396-b1ff-482ecd9604e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\d3d12">
+      <UniqueIdentifier>{42760c90-cafd-40be-8310-029ea7537a58}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\pil.h">
@@ -36,20 +42,32 @@
     <ClInclude Include="..\..\..\include\win32\pil_win32.h">
       <Filter>Header Files\win32</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\win32\dynlib_win32.h">
       <Filter>Header Files\win32</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\win32\win32api_win32.h">
       <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\display_device_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\display_system_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\display_window_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\display.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -65,15 +83,6 @@
     <ClCompile Include="..\..\..\src\win32\memmgr_win32.cc">
       <Filter>Source Files\win32</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\win32\d3d12api_win32.cc">
-      <Filter>Source Files\win32</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\win32\d3dcompilerapi_win32.cc">
-      <Filter>Source Files\win32</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc">
-      <Filter>Source Files\win32</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\win32\dynlib_win32.cc">
       <Filter>Source Files\win32</Filter>
     </ClCompile>
@@ -85,6 +94,24 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\table.cc">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\d3d12api_win32.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\d3dcompilerapi_win32.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\display_device_d3d12.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\display_system_d3d12.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\display_window_d3d12.cc">
+      <Filter>Source Files\d3d12</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

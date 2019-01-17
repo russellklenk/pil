@@ -11,12 +11,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\include\display.h" />
     <ClInclude Include="..\..\..\include\dynlib.h" />
     <ClInclude Include="..\..\..\include\memmgr.h" />
     <ClInclude Include="..\..\..\include\pil.h" />
     <ClInclude Include="..\..\..\include\table.h" />
     <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h" />
     <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\display_device_d3d12.h" />
+    <ClInclude Include="..\..\..\include\win32\display_system_d3d12.h" />
+    <ClInclude Include="..\..\..\include\win32\display_window_d3d12.h" />
     <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h" />
     <ClInclude Include="..\..\..\include\win32\dynlib_win32.h" />
     <ClInclude Include="..\..\..\include\win32\pil_win32.h" />
@@ -29,6 +33,9 @@
     <ClCompile Include="..\..\..\src\version.cc" />
     <ClCompile Include="..\..\..\src\win32\d3d12api_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\d3dcompilerapi_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\display_device_d3d12.cc" />
+    <ClCompile Include="..\..\..\src\win32\display_system_d3d12.cc" />
+    <ClCompile Include="..\..\..\src\win32\display_window_d3d12.cc" />
     <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\dynlib_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\memmgr_win32.cc" />
@@ -40,7 +47,7 @@
     <ProjectGuid>{EB2B9688-6244-41D6-9F1F-1451F118609B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>libpil</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
