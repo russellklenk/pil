@@ -2,7 +2,7 @@
  * @summary d3d12api_win32.cc: Implement the runtime loader for D3D12.dll for 
  * the Windows platform.
  */
-#include "d3d12api_win32.h"
+#include "win32/d3d12api_win32.h"
 
 static HRESULT WINAPI
 D3D12CreateDevice_Stub

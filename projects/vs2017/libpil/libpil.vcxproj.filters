@@ -24,24 +24,6 @@
     <ClInclude Include="..\..\..\include\pil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\pil_win32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\d3d12api_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\d3dcompilerapi_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\dxgiapi_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\dynlib_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\include\win32api_win32.h">
-      <Filter>Header Files\win32</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\include\dynlib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -50,6 +32,24 @@
     </ClInclude>
     <ClInclude Include="..\..\..\include\table.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\pil_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\dynlib_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\win32api_win32.h">
+      <Filter>Header Files\win32</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

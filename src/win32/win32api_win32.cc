@@ -2,7 +2,7 @@
  * @summary win32api_win32.cc: Implement the Windows API runtime loader for the
  * Windows platform.
  */
-#include "win32api_win32.h"
+#include "win32/win32api_win32.h"
 
 static HRESULT WINAPI
 SetProcessDpiAwareness_Stub

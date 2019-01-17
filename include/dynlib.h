@@ -125,9 +125,9 @@ RuntimeModuleResolve
 #endif /* __PIL_DYNLIB_H__ */
 
 #if   PIL_TARGET_PLATFORM == PIL_PLATFORM_WIN32
-#   include "dynlib_win32.h"
+#   include "win32/dynlib_win32.h"
 #elif PIL_TARGET_PLATFORM == PIL_PLATFORM_LINUX
-#   include "dynlib_linux.h"
+#   include "linux/dynlib_linux.h"
 #else
 #   error No Platform Interface Layer dynamic library module for your platform!
 #endif

@@ -2,7 +2,7 @@
  * @summary d3dcompilerapi_win32.cc: Implement the D3DCompiler runtime loader 
  * for Windows platforms.
  */
-#include "d3dcompilerapi_win32.h"
+#include "win32/d3dcompilerapi_win32.h"
 
 static HRESULT WINAPI
 D3DCompile_Stub

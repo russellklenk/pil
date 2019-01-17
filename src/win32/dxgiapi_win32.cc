@@ -1,7 +1,7 @@
 /**
  * @summary dxgiapi_win32.cc: Implement the DXGI runtime loader for Windows.
  */
-#include "dxgiapi_win32.h"
+#include "win32/dxgiapi_win32.h"
 
 static HRESULT WINAPI
 CreateDXGIFactory_Stub

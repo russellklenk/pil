@@ -422,9 +422,9 @@ PIL_ContextDelete
  * for platform-specific types forward-declared in this header.
  */
 #if   PIL_TARGET_PLATFORM == PIL_PLATFORM_WIN32
-#   include "pil_win32.h"
+#   include "win32/pil_win32.h"
 #elif PIL_TARGET_PLATFORM == PIL_PLATFORM_LINUX
-#   include "pil_linux.h"
+#   include "linux/pil_linux.h"
 #else
 #   error No Platform Interface Layer implementation for your platform!
 #endif
