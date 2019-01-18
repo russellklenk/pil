@@ -158,8 +158,8 @@ FileEnumeratorSearch
         if (newsend[-1] != L'\\' && newsend[-1] != L'/') {
             *newsend++   = L'\\';
         }
-        memcpy(newpend, dirname, (dirlen+1) * sizeof(char_native_t));
-        memcpy(newsend, dirname, (dirlen+1) * sizeof(char_native_t));
+        CopyMemory(newpend, dirname, (dirlen+1) * sizeof(char_native_t));
+        CopyMemory(newsend, dirname, (dirlen+1) * sizeof(char_native_t));
     }
     /* append the filter pattern to the filter string - use a wildcard to find everything */
     newpend     = newpend + dirlen; *newpend++ = L'\\'; *newpend = L'\0';
@@ -603,7 +603,7 @@ PathChangeExtension
         *inp_ext++ = L'.';
     }
     /* append the extension to the native path string, including the nul-terminator */
-    memcpy(inp_ext, new_extension, ext_bytes);
+    CopyMemory(inp_ext, new_extension, ext_bytes);
     inp_ext += ext_chars;
     /* all finished; set output parameters */
     if (buffer_end  != NULL) *buffer_end  = inp_ext;
@@ -687,7 +687,7 @@ PathAppendExtension
         *inp_end++ = L'.';
     }
     /* append the extension to the native path string, including the nul-terminator */
-    memcpy(inp_end, extension, ext_bytes);
+    CopyMemory(inp_end, extension, ext_bytes);
     inp_end += ext_chars;
     /* all finished; set output parameters */
     if (buffer_end  != NULL) *buffer_end  = inp_end;
@@ -802,7 +802,7 @@ FileEnumeratorCreate
             return -1;
         }
         /* copy that path to the filter path buffer - include the nul */
-        memcpy(flt_path, abs_path, (nchars+1) * sizeof(char_native_t));
+        CopyMemory(flt_path, abs_path, (nchars+1) * sizeof(char_native_t));
         /* append a second nul to the AbsolutePath buffer - RelativePath will point to that */
        *(abs_path+nchars+1)        = L'\0'; 
         fsenum->DirectoryHandle    = fd;
@@ -848,13 +848,14 @@ FileEnumeratorExecute
     struct FILE_ENUMERATOR *fsenum
 )
 {
+    WCHAR dirname[1] = {L'\0'};
     if (fsenum->DirectoryHandle == INVALID_HANDLE_VALUE) {
         return -1;
     }
     if (fsenum->AbsolutePath == NULL || fsenum->SearchPath == NULL) {
         return -1;
     }
-    return FileEnumeratorSearch(fsenum, fsenum->RelativePath-1, fsenum->SearchEnd, L"");
+    return FileEnumeratorSearch(fsenum, fsenum->RelativePath-1, fsenum->SearchEnd, dirname);
 }
 
 PIL_API(int)
