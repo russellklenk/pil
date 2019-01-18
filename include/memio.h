@@ -17,8 +17,8 @@
  * @param _v The value to byte swap.
  * @return The byte swapped value.
  */
-#ifndef PIL_ByteSwap2
-#define PIL_ByteSwap2(_v)                                                      \
+#ifndef ByteSwap2
+#define ByteSwap2(_v)                                                          \
     ( (((_v) >> 8) & 0x00FF) |                                                 \
       (((_v) << 8) & 0xFF00) )
 #endif
@@ -27,8 +27,8 @@
  * @param _v The value to byte swap.
  * @return The byte swapped value.
  */
-#ifndef PIL_ByteSwap4
-#define PIL_ByteSwap4(_v)                                                      \
+#ifndef ByteSwap4
+#define ByteSwap4(_v)                                                          \
     ( (((_v) >> 24) & 0x000000FF) |                                            \
       (((_v) >>  8) & 0x0000FF00) |                                            \
       (((_v) <<  8) & 0x00FF0000) |                                            \
@@ -39,8 +39,8 @@
  * @param _v The value to byte swap.
  * @return The byte swapped value.
  */
-#ifndef PIL_ByteSwap8
-#define PIL_ByteSwap8(_v)                                                      \
+#ifndef ByteSwap8
+#define ByteSwap8(_v)                                                          \
     ( (((_v) >> 56) & 0x00000000000000FFULL) |                                 \
       (((_v) >> 40) & 0x000000000000FF00ULL) |                                 \
       (((_v) >> 24) & 0x0000000000FF0000ULL) |                                 \
