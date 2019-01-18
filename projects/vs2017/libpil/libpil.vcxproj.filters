@@ -69,6 +69,15 @@
     <ClInclude Include="..\..\..\include\display.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\memio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\strlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\strlib_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\context.cc">
@@ -112,6 +121,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\win32\display_window_d3d12.cc">
       <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\memio.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\strlib_win32.cc">
+      <Filter>Source Files\win32</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

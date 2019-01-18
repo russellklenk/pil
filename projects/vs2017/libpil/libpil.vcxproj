@@ -13,8 +13,10 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\include\display.h" />
     <ClInclude Include="..\..\..\include\dynlib.h" />
+    <ClInclude Include="..\..\..\include\memio.h" />
     <ClInclude Include="..\..\..\include\memmgr.h" />
     <ClInclude Include="..\..\..\include\pil.h" />
+    <ClInclude Include="..\..\..\include\strlib.h" />
     <ClInclude Include="..\..\..\include\table.h" />
     <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h" />
     <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h" />
@@ -24,10 +26,12 @@
     <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h" />
     <ClInclude Include="..\..\..\include\win32\dynlib_win32.h" />
     <ClInclude Include="..\..\..\include\win32\pil_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\strlib_win32.h" />
     <ClInclude Include="..\..\..\include\win32\win32api_win32.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\context.cc" />
+    <ClCompile Include="..\..\..\src\memio.cc" />
     <ClCompile Include="..\..\..\src\memmgr.cc" />
     <ClCompile Include="..\..\..\src\table.cc" />
     <ClCompile Include="..\..\..\src\version.cc" />
@@ -39,6 +43,7 @@
     <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\dynlib_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\memmgr_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\strlib_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\table_win32.cc" />
     <ClCompile Include="..\..\..\src\win32\win32api_win32.cc" />
   </ItemGroup>
