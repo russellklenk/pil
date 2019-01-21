@@ -20,7 +20,7 @@
  */
 #ifndef StringTableInternUtf8
 #define StringTableInternUtf8(_table, _str)                                    \
-    (char_utf8_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_UTF8)
+    (char_utf8_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_UTF8, StringHash32_Utf8)
 #endif
 
 /* @summary Intern a UTF-16 encoded string in a string table.
@@ -30,7 +30,7 @@
  */
 #ifndef StringTableInternUtf16
 #define StringTableInternUtf16(_table, _str)                                   \
-    (char_utf16_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_UTF16)
+    (char_utf16_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_UTF16, StringHash32_Utf16)
 #endif
 
 /* @summary Intern a UTF-32 encoded string in a string table.
@@ -40,7 +40,7 @@
  */
 #ifndef StringTableInternUtf32
 #define StringTableInternUtf32(_table, _str)                                   \
-    (char_utf32_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_UTF32)
+    (char_utf32_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_UTF32, StringHash32_Utf32)
 #endif
 
 /* @summary Intern a native-encoded string in a string table.
@@ -50,7 +50,7 @@
  */
 #ifndef StringTableInternNative
 #define StringTableInternNative(_table, _str)                                  \
-    (char_native_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_NATIVE)
+    (char_native_t*) StringTableIntern((_table), (_str), STRING_CHAR_TYPE_NATIVE, STRING_HASH_FUNC_NATIVE)
 #endif
 
 /* @summary Forward-declare the types exported by this module.
@@ -78,6 +78,7 @@ typedef uint32_t (*PFN_StringHash32)(void const *str, uint32_t *n_b, uint32_t *n
 /* @summary Define data describing the attributes of an interned string.
  */
 typedef struct STRING_INFO {
+    uint32_t                     ByteOffset;                                   /* The byte offset of the start of the string data from the start of the string data block. */
     uint32_t                     ByteLength;                                   /* The length of the string, including the terminating nul, in bytes. */
     uint32_t                     CharLength;                                   /* The length of the string, not including the terminating nul, in characters. */
     uint32_t                     CharacterType;                                /* One of the values of the STRING_CHAR_TYPE enumeration, specifying the character encoding. */
@@ -88,12 +89,21 @@ typedef struct STRING_INFO {
  * The maximum string count is used to determine the size of the lookup table used when performing intern operations.
  */
 typedef struct STRING_TABLE_INIT {
-    PFN_StringHash32             HashFunction;                                 /* The function used to produce a 32-bit hash value given a nul-terminated string. */
     uint32_t                     MaxDataSize;                                  /* The maximum amount of memory that can be committed for storing string data, in bytes. */
     uint32_t                     DataCommitSize;                               /* The amount of memory, in bytes, to commit for the string data chunk during table creation. */
     uint32_t                     MaxStringCount;                               /* The maximum number of strings the table can hold. */
     uint32_t                     InitialCapacity;                              /* The number of strings expected to be interned in the table. */
 } STRING_TABLE_INIT;
+
+/* @summary Define the data needed to access the current contents of a string table.
+ * This data is typically used to serialize the string table to disk.
+ */
+typedef struct STRING_TABLE_INFO {
+    struct STRING_INFO          *StringInfo;                                   /* An array of StringCount descriptors for the strings interned in the table. */
+    uint8_t                     *StringData;                                   /* A pointer to the first byte of the string data block. */
+    uint32_t                     StringCount;                                  /* The number of strings interned in the table. */
+    uint32_t                     DataBytes;                                    /* The number of bytes of string data in the string data block. */
+} STRING_TABLE_INFO;
 
 /* @summary Define the character type encodings for strings interned within a string table.
  * The platform header additionally defines STRING_CHAR_TYPE_NATIVE to one of the types in this enum.
@@ -104,7 +114,7 @@ typedef enum STRING_CHAR_TYPE {
     STRING_CHAR_TYPE_UTF8        =  1,                                         /* The character data is stored using UTF-8 encoding. */
     STRING_CHAR_TYPE_UTF16       =  2,                                         /* The character data is stored using UTF-16 encoding. */
     STRING_CHAR_TYPE_UTF32       =  3,                                         /* The character data is stored using UTF-32 encoding. */
-    /* STRING_CHAR_TYPE_NATIVE  */
+    /* STRING_CHAR_TYPE_NATIVE in strlib_win32.h, etc. defined as one of the above */
 } STRING_CHAR_TYPE;
 
 #ifdef __cplusplus
@@ -187,6 +197,30 @@ StringConvertNativeToUtf8
     size_t                *utf8_len
 );
 
+PIL_API(void)
+StringLengthUtf8
+(
+    void const   *str, 
+    uint32_t *n_bytes, 
+    uint32_t *n_chars
+);
+
+PIL_API(void)
+StringLengthUtf16
+(
+    void const   *str, 
+    uint32_t *n_bytes, 
+    uint32_t *n_chars
+);
+
+PIL_API(void)
+StringLengthUtf32
+(
+    void const   *str, 
+    uint32_t *n_bytes, 
+    uint32_t *n_chars
+);
+
 /* @summary Compute a 32-bit hash value of a nul-terminated UTF-8 encoded string.
  * @param str The nul-terminated string to hash.
  * @param len_b On return, this location is updated with the number of bytes of string data, including the nul.
@@ -229,6 +263,18 @@ StringHash32_Utf32
     uint32_t         *len_c
 );
 
+/* @summary Compute a 32-bit hash value of an in-memory string with known end.
+ * @param strbeg A pointer to the first byte of the string data.
+ * @param strend A pointer to one byte past the last byte of the string data. If the string is nul-terminated, strend would point to the nul.
+ * @return A 32-bit hash value for the input string.
+ */
+PIL_API(uint32_t)
+StringHash32_Range
+(
+    void const *strbeg, 
+    void const *strend
+);
+
 /* @summary Construct a new string table with the given attributes.
  * @param init Data used to configure the string table.
  * @return Zero if the table is successfully created, or -1 if an error occurred.
@@ -261,6 +307,7 @@ StringTableReset
  * @param table The STRING_TABLE managing the string data.
  * @param str The nul-terminated string to intern.
  * @param char_type One of the values of the STRING_CHAR_TYPE enumeration specifying the string encoding.
+ * @param hash_fn The hash function to use for the string data.
  * @return A pointer to the interned string, or NULL if the input string is NULL or the data cannot be interned.
  * If the string was already present in the table, the existing copy is returned.
  */
@@ -269,7 +316,20 @@ StringTableIntern
 (
     struct STRING_TABLE *table, 
     void const            *str, 
-    uint32_t         char_type
+    uint32_t         char_type, 
+    PFN_StringHash32   hash_fn
+);
+
+/* @summary Retrieve information about the set of strings interned in a string table.
+ * This data is typically used to serialize the string table contents.
+ * @param info The STRING_TABLE_INFO structure to populate with information.
+ * @param table The STRING_TABLE to query.
+ */
+PIL_API(void)
+StringTableGetTableInfo
+(
+    struct STRING_TABLE_INFO *info, 
+    struct STRING_TABLE     *table
 );
 
 /* @summary Retrieve information (length and encoding) for a particular string interned in a string table.
@@ -279,7 +339,7 @@ StringTableIntern
  * @return Zero if the operation is successful, or non-zero if an error occurred (for example, str is not interned within table).
  */
 PIL_API(int)
-StringTableInfo
+StringTableGetStringInfo
 (
     struct STRING_INFO   *info, 
     struct STRING_TABLE *table, 

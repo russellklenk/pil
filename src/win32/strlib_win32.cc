@@ -2,7 +2,6 @@
  * @summary strlib_win32.cc: Implement the string library entry points specific 
  * to the Microsoft Windows platform.
  */
-#include "memio.h"
 #include "memmgr.h"
 #include "strlib.h"
 
@@ -180,12 +179,12 @@ StringTableQueryMemorySize
     table_size_commit       += PIL_AllocationSizeArray(STRING_HASH_CHUNK*, num_buckets_pow2);
     entry_offset             = table_size_commit;
     table_size_reserve       = table_size_commit;
-    table_size_commit       += PIL_AllocationSizeArray(STRING_DATA_ENTRY , init->InitialCapacity);
-    table_size_reserve      += PIL_AllocationSizeArray(STRING_DATA_ENTRY , init->MaxStringCount);
+    table_size_commit       += PIL_AllocationSizeArray(STRING_INFO, init->InitialCapacity);
+    table_size_reserve      += PIL_AllocationSizeArray(STRING_INFO, init->MaxStringCount);
     table_size_commit        = PIL_AlignUp(table_size_commit , sysinfo.dwPageSize);
     table_size_reserve       = PIL_AlignUp(table_size_reserve, sysinfo.dwPageSize);
-    commit_entries           =(table_size_commit  - entry_offset) / sizeof(STRING_DATA_ENTRY);
-    reserve_entries          =(table_size_reserve - entry_offset) / sizeof(STRING_DATA_ENTRY);
+    commit_entries           =(table_size_commit  - entry_offset) / sizeof(STRING_INFO);
+    reserve_entries          =(table_size_reserve - entry_offset) / sizeof(STRING_INFO);
     
     /* calculate the reservation and initial commit size for the hash block */
     hash_size_commit         = PIL_AllocationSizeArray(STRING_HASH_CHUNK, num_buckets_pow2);
@@ -423,6 +422,27 @@ StringHash32_Utf32
     return h32;
 }
 
+PIL_API(uint32_t)
+StringHash32_Range
+(
+    void const *strbeg, 
+    void const *strend
+)
+{   /* FNV1 with MurmurHash3 finalizer */
+    uint8_t const *s =(uint8_t const*) strbeg;
+    uint8_t const *e =(uint8_t const*) strend;
+    uint32_t     h32 = 2166136261U;
+    while (s < e) {
+        h32 =(16777619U * h32) + *s++;
+    }
+    h32 ^= h32 >> 16;
+    h32 *= 0x85EBCA6BU;
+    h32 ^= h32 >> 13;
+    h32 *= 0xC2B2AE35U;
+    h32 ^= h32 >> 16;
+    return h32;
+}
+
 PIL_API(struct STRING_TABLE*)
 StringTableCreate
 (
@@ -430,7 +450,7 @@ StringTableCreate
 )
 {
     STRING_TABLE          *table = nullptr;
-    STRING_DATA_ENTRY   *strings = nullptr;
+    STRING_INFO         *strings = nullptr;
     STRING_HASH_CHUNK    *chunks = nullptr;
     STRING_HASH_CHUNK      *head = nullptr;
     STRING_HASH_CHUNK      *next = nullptr;
@@ -444,11 +464,6 @@ StringTableCreate
     MEMORY_ARENA_INIT arena_init;
     STRING_TABLE_SIZE_INFO sizes;
 
-    if (init->HashFunction == nullptr) {
-        assert(init->HashFunction != nullptr);
-        error_code = ERROR_INVALID_PARAMETER;
-        return nullptr;
-    }
     if (init->DataCommitSize >= init->MaxDataSize) {
         assert(init->MaxDataSize >= init->DataCommitSize);
         error_code = ERROR_INVALID_PARAMETER;
@@ -510,8 +525,7 @@ StringTableCreate
     }
     table   = MemoryArenaAllocateHostType (&arena, STRING_TABLE);
     buckets = MemoryArenaAllocateHostArray(&arena, STRING_HASH_CHUNK*, sizes.BucketCount);
-    strings = MemoryArenaAllocateHostArray(&arena, STRING_DATA_ENTRY , sizes.StringReserveCount);
-    table->HashString         = init->HashFunction;
+    strings = MemoryArenaAllocateHostArray(&arena, STRING_INFO, sizes.StringReserveCount);
     table->StringList         = strings;
     table->HashBuckets        = buckets;
     table->StringDataBase     = data_addr;
@@ -589,7 +603,8 @@ StringTableIntern
 (
     struct STRING_TABLE *table, 
     void const            *str, 
-    uint32_t         char_type
+    uint32_t         char_type, 
+    PFN_StringHash32   hash_fn
 )
 {
     uint32_t const  GROW_SIZE = 64UL * 1024; /* 64KB */
@@ -605,11 +620,11 @@ StringTableIntern
     uint32_t          eoffset;
     uint32_t          *hashes;
     STRING_HASH_CHUNK *bucket;
-    STRING_DATA_ENTRY  *entry;
+    STRING_INFO        *entry;
     uint8_t             *sptr;
 
     if (str != nullptr) {
-        hash    = table->HashString(str, &len_b, &len_c);
+        hash    = hash_fn(str, &len_b, &len_c);
         eoffset = table->StringDataNext;
         eindex  = table->StringCount;
         bindex  = hash &(table->HashBucketCount-1);
@@ -618,9 +633,9 @@ StringTableIntern
             for (i = 0, n = bucket->ItemCount, hashes = bucket->EntryHash; i < n; ++i) {
                 if (hashes[i] == hash) {
                     entry = &table->StringList[bucket->EntryIndex[i]];
-                    if (entry->StringInfo.ByteLength    == len_b && 
-                        entry->StringInfo.CharLength    == len_c && 
-                        entry->StringInfo.CharacterType == char_type) {
+                    if (entry->ByteLength    == len_b && 
+                        entry->CharLength    == len_c && 
+                        entry->CharacterType == char_type) {
                         sptr = table->StringDataBase + entry->ByteOffset;
                         if (memcmp(str, sptr, len_b) == 0) {
                             return sptr;
@@ -643,10 +658,10 @@ StringTableIntern
             /* commit an additional 64KB of string entry data */
             uint32_t commit_size = GROW_SIZE;
             uint32_t  num_commit = table->StringReserveCount - table->StringCommitCount;
-            uint32_t   nb_commit = num_commit * sizeof(STRING_DATA_ENTRY);
+            uint32_t   nb_commit = num_commit * sizeof(STRING_INFO);
             if (nb_commit > commit_size) { /* commit a max of 64KB at once */
                 nb_commit = commit_size;
-                num_commit= nb_commit / sizeof(STRING_DATA_ENTRY);
+                num_commit= nb_commit / sizeof(STRING_INFO);
             }
             if (VirtualAlloc(&table->StringList[table->StringCount], nb_commit, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
                 return nullptr;
@@ -711,16 +726,17 @@ StringTableIntern
 
         /* cache the string information in the table */
         entry = &table->StringList[eindex];
-        entry->StringInfo.ByteLength       = len_b;
-        entry->StringInfo.CharLength       = len_c;
-        entry->StringInfo.CharacterType    = char_type;
-        entry->ByteOffset = eoffset + sizeof(uint32_t);
+        entry->ByteLength    = len_b;
+        entry->CharLength    = len_c;
+        entry->CharacterType = char_type;
+        entry->ByteOffset    = eoffset + sizeof(uint32_t);
         table->StringCount++;
 
         /* copy the string data to the storage block */
         table->StringDataNext = eoffset + nb_need;
         sptr  = table->StringDataBase + eoffset;
-        sptr += Write_ui32(sptr, eindex, 0);
+        *(uint32_t*) sptr = eindex;
+        sptr += sizeof(uint32_t );
         memcpy (sptr, str, len_b);
         sptr += len_b;
         for(i = 0; i < nb_pad; ++i) {
@@ -731,8 +747,21 @@ StringTableIntern
     return nullptr;
 }
 
+PIL_API(void)
+StringTableGetTableInfo
+(
+    struct STRING_TABLE_INFO *info, 
+    struct STRING_TABLE     *table
+)
+{
+    info->StringInfo  = table->StringList;
+    info->StringData  = table->StringDataBase;
+    info->StringCount = table->StringCount;
+    info->DataBytes   = table->StringDataNext;
+}
+
 PIL_API(int)
-StringTableInfo
+StringTableGetStringInfo
 (
     struct STRING_INFO   *info, 
     struct STRING_TABLE *table, 
@@ -747,12 +776,14 @@ StringTableInfo
     if (addr  >= addr_min && addr < addr_max) {
         index  =*(uint32_t*)(addr-sizeof(uint32_t));
         assert(index < table->StringCount); 
-        i = &table->StringList[index].StringInfo;
+        i = &table->StringList[index];
+        info->ByteOffset     = i->ByteOffset;
         info->ByteLength     = i->ByteLength;
         info->CharLength     = i->CharLength;
         info->CharacterType  = i->CharacterType;
         return  0;
     } else {
+        info->ByteOffset     = 0;
         info->ByteLength     = 0;
         info->CharLength     = 0;
         info->CharacterType  = STRING_CHAR_TYPE_UNKNOWN;
