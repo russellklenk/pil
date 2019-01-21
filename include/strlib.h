@@ -197,6 +197,11 @@ StringConvertNativeToUtf8
     size_t                *utf8_len
 );
 
+/* @summary Calculate the lengths for a nul-terminated, UTF-8 encoded string.
+ * @param str The nul-terminated string to examine.
+ * @param n_bytes On return, this location is set to the number of bytes in the string, including the nul terminator.
+ * @param n_chars On return, this location is set to the number of codepoints in the string, not including the nul terminator.
+ */
 PIL_API(void)
 StringLengthUtf8
 (
@@ -205,6 +210,11 @@ StringLengthUtf8
     uint32_t *n_chars
 );
 
+/* @summary Calculate the lengths for a nul-terminated, UTF-16 encoded string.
+ * @param str The nul-terminated string to examine.
+ * @param n_bytes On return, this location is set to the number of bytes in the string, including the nul terminator.
+ * @param n_chars On return, this location is set to the number of codepoints in the string, not including the nul terminator.
+ */
 PIL_API(void)
 StringLengthUtf16
 (
@@ -213,6 +223,11 @@ StringLengthUtf16
     uint32_t *n_chars
 );
 
+/* @summary Calculate the lengths for a nul-terminated, UTF-32 encoded string.
+ * @param str The nul-terminated string to examine.
+ * @param n_bytes On return, this location is set to the number of bytes in the string, including the nul terminator.
+ * @param n_chars On return, this location is set to the number of codepoints in the string, not including the nul terminator.
+ */
 PIL_API(void)
 StringLengthUtf32
 (

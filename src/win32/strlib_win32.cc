@@ -40,111 +40,6 @@ StringNextPow2GreaterOrEqual
     return n+1;
 }
 
-/* @summary Compute the length of a UTF-8 encoded, nul-terminated string.
- * @param str The string.
- * @param cb On return, this location stores the string length, including the nul, in bytes.
- * @param cc On return, this location stores the string length, not including the nul, in characters.
- */
- #if 0
-static void
-StrlenUtf8
-(
-    void const *str, 
-    uint32_t    *cb, 
-    uint32_t    *cc
-)
-{
-    uint8_t const *s =(uint8_t const*) str;
-    uint32_t      nb = 0;
-    uint32_t      nc = 0;
-    uint8_t       cp;
-
-    if (str != nullptr) {
-        while ((cp = *s++)) {
-            if((cp & 0xC0) != 0x80) {
-                nc++;
-            } nb++;
-        }
-        PIL_Assign(cb, nb+1);
-        PIL_Assign(cc, nc);
-    } else {
-        PIL_Assign(cb, 1);
-        PIL_Assign(cc, 0);
-    }
-}
-#endif
-
-/* @summary Compute the length of a UTF-16 encoded, nul-terminated string.
- * @param str The string.
- * @param cb On return, this location stores the string length, including the nul, in bytes.
- * @param cc On return, this location stores the string length, not including the nul, in characters.
- */
- #if 0
-static void
-StrlenUtf16
-(
-    void const *str, 
-    uint32_t    *cb, 
-    uint32_t    *cc
-)
-{
-    uint16_t const *s =(uint16_t const*) str;
-    uint32_t       nb = 0;
-    uint32_t       nc = 0;
-    uint16_t       cp;
-
-    if (str != nullptr) {
-        while ((cp = *s++)) {
-            nb += 2; nc++;
-            if (cp >= 0xD800 && cp <= 0xDBFF) { 
-                cp  =*s;
-                if (cp >= 0xDC00 && cp <= 0xDFFF) {
-                    nb += 2;
-                    s++;
-                }
-            }
-        }
-        PIL_Assign(cb, nb+2);
-        PIL_Assign(cc, nc);
-    } else {
-        PIL_Assign(cb, 2);
-        PIL_Assign(cc, 0);
-    }
-}
-#endif
-
-/* @summary Compute the length of a UTF-32 encoded, nul-terminated string.
- * @param str The string.
- * @param cb On return, this location stores the string length, including the nul, in bytes.
- * @param cc On return, this location stores the string length, not including the nul, in characters.
- */
- #if 0
-static void
-StrlenUtf32
-(
-    void const *str, 
-    uint32_t    *cb, 
-    uint32_t    *cc
-)
-{
-    uint32_t const *s =(uint32_t const*) str;
-    uint32_t       nb = 0;
-    uint32_t       nc = 0;
-    uint32_t       cp;
-
-    if (str != nullptr) {
-        while ((cp = *s++)) {
-            nb += 4; nc++;
-        }
-        PIL_Assign(cb, nb+4);
-        PIL_Assign(cc, nc);
-    } else {
-        PIL_Assign(cb, 4);
-        PIL_Assign(cc, 0);
-    }
-}
-#endif
-
 /* @summary Determine the memory allocation attributes for a given string table configuration.
  * @param size On return, this structure stores the memory allocation attributes for the string table.
  * @param init Configuration data specifying the attributes of the string table.
@@ -327,6 +222,105 @@ StringConvertNativeToUtf8
         return -1;
     } *utf8_len = (size_t) nbytes;
     return 0;
+}
+
+/* @summary Compute the length of a UTF-8 encoded, nul-terminated string.
+ * @param str The string.
+ * @param cb On return, this location stores the string length, including the nul, in bytes.
+ * @param cc On return, this location stores the string length, not including the nul, in characters.
+ */
+PIL_API(void)
+StringLengthUtf8
+(
+    void const   *str, 
+    uint32_t *n_bytes, 
+    uint32_t *n_chars
+)
+{
+    uint8_t const *s =(uint8_t const*) str;
+    uint32_t      nb = 0;
+    uint32_t      nc = 0;
+    uint8_t       cp;
+
+    if (str != nullptr) {
+        while ((cp = *s++) != 0) {
+            if((cp & 0xC0) != 0x80) {
+                nc++;
+            } nb++;
+        }
+        PIL_Assign(n_bytes, nb+1);
+        PIL_Assign(n_chars, nc);
+    } else {
+        PIL_Assign(n_bytes, 0);
+        PIL_Assign(n_chars, 0);
+    }
+}
+
+/* @summary Compute the length of a UTF-16 encoded, nul-terminated string.
+ * @param str The string.
+ * @param cb On return, this location stores the string length, including the nul, in bytes.
+ * @param cc On return, this location stores the string length, not including the nul, in characters.
+ */
+PIL_API(void)
+StringLengthUtf16
+(
+    void const   *str, 
+    uint32_t *n_bytes, 
+    uint32_t *n_chars
+)
+{
+    uint16_t const *s =(uint16_t const*) str;
+    uint32_t       nb = 0;
+    uint32_t       nc = 0;
+    uint16_t       cp;
+
+    if (str != nullptr) {
+        while ((cp = *s++) != 0) {
+            nb += 2; nc++;
+            if (cp >= 0xD800 && cp <= 0xDBFF) { 
+                cp  =*s;
+                if (cp >= 0xDC00 && cp <= 0xDFFF) {
+                    nb += 2;
+                    s++;
+                }
+            }
+        }
+        PIL_Assign(n_bytes, nb+2);
+        PIL_Assign(n_chars, nc);
+    } else {
+        PIL_Assign(n_bytes, 0);
+        PIL_Assign(n_chars, 0);
+    }
+}
+
+/* @summary Compute the length of a UTF-32 encoded, nul-terminated string.
+ * @param str The string.
+ * @param cb On return, this location stores the string length, including the nul, in bytes.
+ * @param cc On return, this location stores the string length, not including the nul, in characters.
+ */
+PIL_API(void)
+StringLengthUtf32
+(
+    void const   *str, 
+    uint32_t *n_bytes, 
+    uint32_t *n_chars
+)
+{
+    uint32_t const *s =(uint32_t const*) str;
+    uint32_t       nb = 0;
+    uint32_t       nc = 0;
+    uint32_t       cp;
+
+    if (str != nullptr) {
+        while ((cp = *s++) != 0) {
+            nb += 4; nc++;
+        }
+        PIL_Assign(n_bytes, nb+4);
+        PIL_Assign(n_chars, nc);
+    } else {
+        PIL_Assign(n_bytes, 0);
+        PIL_Assign(n_chars, 0);
+    }
 }
 
 PIL_API(uint32_t)
