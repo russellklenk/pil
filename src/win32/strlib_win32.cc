@@ -40,6 +40,25 @@ StringNextPow2GreaterOrEqual
     return n+1;
 }
 
+/* @summary Given a value of the STRING_CHAR_TYPE enumeration, return the corresponding function for producing a 32-bit hash of a nul-terminated string.
+ * @param char_type One of the values of the STRING_CHAR_TYPE enumeration.
+ * @return The corresponding hash function.
+ */
+static PIL_INLINE PFN_StringHash32
+StringHashForCharType
+(
+    uint32_t char_type
+)
+{
+    switch (char_type) {
+        case STRING_CHAR_TYPE_UNKNOWN: return StringHash32_Utf8;
+        case STRING_CHAR_TYPE_UTF8   : return StringHash32_Utf8;
+        case STRING_CHAR_TYPE_UTF16  : return StringHash32_Utf16;
+        case STRING_CHAR_TYPE_UTF32  : return StringHash32_Utf32;
+        default                      : break;
+    } return StringHash32_Utf8;
+}
+
 /* @summary Determine the memory allocation attributes for a given string table configuration.
  * @param size On return, this structure stores the memory allocation attributes for the string table.
  * @param init Configuration data specifying the attributes of the string table.
@@ -326,9 +345,9 @@ StringLengthUtf32
 PIL_API(uint32_t)
 StringHash32_Utf8
 (
-    char_utf8_t const *str, 
-    uint32_t        *len_b, 
-    uint32_t        *len_c
+    void const *str, 
+    uint32_t *len_b, 
+    uint32_t *len_c
 )
 {   /* FNV1 with MurmurHash3 finalizer */
     uint8_t const    *s =(uint8_t const*) str;
@@ -356,9 +375,9 @@ StringHash32_Utf8
 PIL_API(uint32_t)
 StringHash32_Utf16
 (
-    char_utf16_t const *str, 
-    uint32_t         *len_b, 
-    uint32_t         *len_c
+    void const *str, 
+    uint32_t *len_b, 
+    uint32_t *len_c
 )
 {   /* FNV1 with MurmurHash3 finalizer */
     uint16_t const *s =(uint16_t const*) str;
@@ -391,9 +410,9 @@ StringHash32_Utf16
 PIL_API(uint32_t)
 StringHash32_Utf32
 (
-    char_utf32_t const *str, 
-    uint32_t         *len_b, 
-    uint32_t         *len_c
+    void const *str, 
+    uint32_t *len_b, 
+    uint32_t *len_c
 )
 {   /* FNV1 with MurmurHash3 finalizer */
     uint32_t const *s =(uint32_t const*) str;
@@ -592,6 +611,94 @@ StringTableReset
     }
 }
 
+PIL_API(int)
+StringTableRebuild
+(
+    struct STRING_TABLE *table, 
+    uint32_t      string_count, 
+    uint32_t        data_bytes
+)
+{
+    uint32_t const      GROW_SIZE = STRING_BUFFER_GROW_SIZE;
+    uint32_t const      ALIGNMENT = STRING_DATA_ALIGNMENT;
+    PFN_StringHash32    hash_func = StringHash32_Utf8;
+    STRING_INFO          *ent_itr = table->StringList;
+    STRING_INFO          *ent_end = table->StringList + string_count;
+    uint8_t            *data_base = table->StringDataBase;
+    uint32_t            char_type = STRING_CHAR_TYPE_UNKNOWN;
+    STRING_HASH_CHUNK   **buckets = table->HashBuckets;
+    STRING_HASH_CHUNK     *bucket = nullptr;
+    uint32_t          bucket_mask = table->HashBucketCount - 1;
+    uint32_t               bindex = 0;
+    uint32_t              ent_idx = 0;
+    uint32_t                 hash = 0;
+    uint8_t                  *str;
+    uint32_t               nb, nc;
+    uint32_t                 i, n;
+
+    if (data_bytes > table->DataCommitSize) {
+        assert(table->DataCommitSize >= data_bytes);
+        return -1;
+    }
+    if (string_count > table->StringCommitCount) {
+        assert(table->StringCommitCount >= string_count);
+        return -1;
+    }
+
+    while (ent_itr < ent_end) {
+        /* validate the entry and hash the string */
+        if (char_type != ent_itr->CharacterType) {
+            hash_func  = StringHashForCharType(ent_itr->CharacterType);
+            char_type  = ent_itr->CharacterType;
+        }
+        str    = data_base + ent_itr->ByteOffset;
+        hash   = hash_func(str, &nb, &nc);
+        bindex = hash & bucket_mask;
+        bucket = buckets[bindex];
+        assert(ent_itr->ByteLength == nb);
+        assert(ent_itr->CharLength == nc);
+
+        /* get the hash chunk where the item will be inserted */
+        if (bucket == nullptr || bucket->ItemCount == STRING_HASH_CHUNK_CAPACITY) {
+            if (table->HashFreeList == nullptr) {
+                /* commit an additional block of hash chunks */
+                uint32_t   commit_size = GROW_SIZE;
+                uint32_t    num_commit = commit_size / sizeof(STRING_HASH_CHUNK);
+                if((table->HashCommitCount + num_commit) > table->HashReserveCount) {
+                    num_commit = table->HashReserveCount - table->HashCommitCount;
+                    commit_size= num_commit * sizeof(STRING_HASH_CHUNK);
+                }
+                if (VirtualAlloc(&table->HashDataBase[table->HashCommitCount*sizeof(STRING_HASH_CHUNK)], commit_size, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
+                    return -1;
+                }
+                for (i = table->HashCommitCount, n = num_commit; i < n; ++i) {
+                    STRING_HASH_CHUNK *chunk =(STRING_HASH_CHUNK*) &table->HashDataBase[i * sizeof(STRING_HASH_CHUNK)];
+                    chunk->NextChunk         = table->HashFreeList;
+                    chunk->ItemCount         = 0;
+                    table->HashFreeList      = chunk;
+                }
+                table->HashCommitCount += num_commit;
+            }
+            /* take a chunk from the head of the free list.
+             * insert it at the head of the hash bucket list. */
+            bucket = table->HashFreeList;
+            table->HashFreeList        = bucket->NextChunk;
+            bucket->NextChunk          = table->HashBuckets[bindex];
+            bucket->ItemCount          = 0;
+            table->HashBuckets[bindex] = bucket;
+        }
+
+        /* append the item to the hash chunk */
+        bucket->EntryHash [bucket->ItemCount] = hash;
+        bucket->EntryIndex[bucket->ItemCount] = ent_idx;
+        bucket->ItemCount++;
+        ent_itr++; ent_idx++;
+    }
+    table->StringDataNext = PIL_AlignUp(data_bytes, ALIGNMENT);
+    table->StringCount    = string_count;
+    return 0;
+}
+
 PIL_API(void*)
 StringTableIntern
 (
@@ -601,8 +708,8 @@ StringTableIntern
     PFN_StringHash32   hash_fn
 )
 {
-    uint32_t const  GROW_SIZE = 64UL * 1024; /* 64KB */
-    uint32_t const  ALIGNMENT = 4;
+    uint32_t const  GROW_SIZE = STRING_BUFFER_GROW_SIZE;
+    uint32_t const  ALIGNMENT = STRING_DATA_ALIGNMENT;
     uint32_t             i, n;
     uint32_t             hash;
     uint32_t            len_b;

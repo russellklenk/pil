@@ -245,9 +245,9 @@ StringLengthUtf32
 PIL_API(uint32_t)
 StringHash32_Utf8
 (
-    char_utf8_t const *str, 
-    uint32_t        *len_b, 
-    uint32_t        *len_c
+    void const *str, 
+    uint32_t *len_b, 
+    uint32_t *len_c
 );
 
 /* @summary Compute a 32-bit hash value of a nul-terminated UTF-16 encoded string.
@@ -259,9 +259,9 @@ StringHash32_Utf8
 PIL_API(uint32_t)
 StringHash32_Utf16
 (
-    char_utf16_t const *str, 
-    uint32_t         *len_b, 
-    uint32_t         *len_c
+    void const *str, 
+    uint32_t *len_b, 
+    uint32_t *len_c
 );
 
 /* @summary Compute a 32-bit hash value of a nul-terminated UTF-32 encoded string.
@@ -273,9 +273,9 @@ StringHash32_Utf16
 PIL_API(uint32_t)
 StringHash32_Utf32
 (
-    char_utf32_t const *str, 
-    uint32_t         *len_b, 
-    uint32_t         *len_c
+    void const *str, 
+    uint32_t *len_b, 
+    uint32_t *len_c
 );
 
 /* @summary Compute a 32-bit hash value of an in-memory string with known end.
@@ -316,6 +316,28 @@ PIL_API(void)
 StringTableReset
 (
     struct STRING_TABLE *table
+);
+
+/* @summary Reconstruct the internal lookup tables after loading a string table.
+ * This involves walking through the data block and re-computing the hashes of each string.
+ *
+ * User code will generally perform the following actions to restore a string table:
+ * 1. Call StringTableCreate(DataCommitSize = data_size, InitialCapacity = string_count) to allocate the table.
+ * 2. Call StringTableGetTableInfo to retrieve the buffers for STRING_INFO and the string data.
+ * 3. Load your data into the STRING_INFO array and the data buffer.
+ * 4. Call StringTableRebuild to reconstruct the hash table.
+ *
+ * @param table The STRING_TABLE to reconstruct.
+ * @param string_count The number of STRING_INFO descriptors loaded into the table.
+ * @param data_bytes The number of bytes of data copied into the string data buffer.
+ * @return Zero if the table is successfully reconstructed, or non-zero if an error occurred.
+ */
+PIL_API(int)
+StringTableRebuild
+(
+    struct STRING_TABLE *table, 
+    uint32_t      string_count, 
+    uint32_t        data_bytes
 );
 
 /* @summary Intern a string within a string table if it doesn't already exist.

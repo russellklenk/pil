@@ -10,17 +10,20 @@
 #   include <strsafe.h>
 #endif
 
-/* @summary Define the native character type for the host OS and the corresponding hash function.
+/* @summary Define constants related to the string library implementation for Microsoft Windows.
+ * STRING_HASH_CHUNK_CAPACITY: The number of items that can be stored in each STRING_HASH_CHUNK record.
+ * STRING_DATA_ALIGNMENT     : The alignment, in bytes, of the first byte of an interned string.
+ * STRING_BUFFER_GROW_SIZE   : The number of bytes by which the commitment is increased when the data buffer needs to grow.
+ * STRING_CHAR_TYPE_NATIVE   : The value of the STRING_CHAR_TYPE enumeration specifying the native character type for the host OS.
+ * STRING_HASH_FUNC_NATIVE   : The PFN_StringHash32 function used to produce a 32-bit hash value for a string with the native character encoding.
  */
-#ifndef STRING_CHAR_TYPE_NATIVE
+#ifndef STRLIB_CONSTANTS_WIN32
+#   define STRLIB_CONSTANTS_WIN32
+#   define STRING_HASH_CHUNK_CAPACITY    30
+#   define STRING_DATA_ALIGNMENT         4
+#   define STRING_BUFFER_GROW_SIZE      (64 * 1024)
 #   define STRING_CHAR_TYPE_NATIVE       STRING_CHAR_TYPE_UTF16
 #   define STRING_HASH_FUNC_NATIVE       StringHash32_Utf16
-#endif
-
-/* @summary Define the capacity of a STRING_HASH_CHUNK.
- */
-#ifndef STRING_HASH_CHUNK_CAPACITY
-#   define STRING_HASH_CHUNK_CAPACITY    30
 #endif
 
 /* @summary Define the data associated with a chunk in the hash list.
