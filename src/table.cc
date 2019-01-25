@@ -18,7 +18,7 @@
 #endif
 
 /* @summary Extract whether or not a HANDLE_BITS represents a possibly-valid item.
- * @param bits The HANDLE_BITS value.
+ * @param _bits The HANDLE_BITS value.
  * @return Non-zero if the HANDLE_BITS identifies an item that was valid at some point.
  */
 #ifndef Table_HandleBitsExtractLive
@@ -27,7 +27,7 @@
 #endif
 
 /* @summary Extract the generation value of the data slot associated with a HANDLE_BITS.
- * @param bits The HANDLE_BITS value.
+ * @param _bits The HANDLE_BITS value.
  * @return The generation value portion of the handle.
  */
 #ifndef Table_HandleBitsExtractGeneration
@@ -36,7 +36,7 @@
 #endif
 
 /* @summary Extract the sparse slot index encoded within a HANDLE_BITS.
- * @param bits The HANDLE_BITS value.
+ * @param _bits The HANDLE_BITS value.
  * @return The zero-based index within the sparse portion of the TABLE_INDEX allocated to the item.
  */
 #ifndef Table_HandleBitsExtractSparseIndex
@@ -45,7 +45,7 @@
 #endif
 
 /* @summary Extract a value indicating whether or not a sparse index slot represents a valid item.
- * @param index_value The word read from the sparse index.
+ * @param _word The word read from the sparse index.
  * @return Non-zero if the slot is associated with a valid item.
  */
 #ifndef Table_SparseIndexExtractLive
@@ -54,7 +54,7 @@
 #endif
 
 /* @summary Extract the generation value of the data slot associated with a sparse index slot.
- * @param index_value The word read from the sparse index.
+ * @param _word The word read from the sparse index.
  * @return The generation value portion of the index value.
  */
 #ifndef Table_SparseIndexExtractGeneration
@@ -63,7 +63,7 @@
 #endif
 
 /* @summary Extract the dense array index encoded within a sparse index slot.
- * @param index_value The word read from the sparse index.
+ * @param _word The word read from the sparse index.
  * @return The dense index portion of the index value.
  */
 #ifndef Table_SparseIndexExtractDenseIndex
@@ -171,6 +171,87 @@ TableDeleteId
         index->ActiveCount = last_dense;
     }
     return moved_value;
+}
+
+PIL_API(void)
+TableDeleteIds
+(
+    struct TABLE_DESC *table, 
+    HANDLE_BITS  *delete_ids, 
+    uint32_t    delete_count
+)
+{
+#   define              HC   64
+#   define              HM  (HC-1)
+    TABLE_INDEX     *index = table->Index;
+    uint32_t *sparse_array = index->SparseIndex;
+    uint32_t *handle_array = index->HandleArray;
+    uint32_t  active_count = index->ActiveCount;
+    uint32_t    last_dense = index->ActiveCount - 1;
+    uint32_t    move_count = 0;
+    uint32_t   state_value; /* read from sparse_array  */
+    uint32_t   state_index; /* index into sparse_array */
+    uint32_t   dense_index; /* index into handle_array */
+    uint32_t   moved_index; /* index into sparse_array */
+    uint32_t   moved_value; /* read from handle_array  */
+    uint32_t   moved_gener;
+    uint32_t   history[HC];
+    uint32_t         found;
+    uint32_t       i, j, n;
+
+    if (delete_count > active_count) {
+        assert(delete_count <= active_count);
+        return;
+    }
+    if (delete_count == active_count) {
+        /* the entire table contents is being deleted */
+        TableDeleteAllIds(table);
+        return;
+    }
+    /* only part of the table is being deleted. 
+     * for large deletions, there can be significant overhead due to repeatedly moving elements.
+     * optimize for this case by tracking which items are moved and where they were moved to. 
+     * then, perform a second pass so that any moved item gets moved at most once.
+     */
+    for (i = 0; i < delete_count; ++i, --last_dense) {
+        state_index = Table_HandleBitsExtractSparseIndex(delete_ids[i]);
+        state_value = sparse_array[state_index];
+        dense_index = Table_SparseIndexExtractDenseIndex(state_value);
+        moved_value = handle_array[last_dense];
+        moved_index = Table_HandleBitsExtractSparseIndex(moved_value);
+        moved_gener = Table_HandleBitsExtractGeneration (moved_value);
+        /* invalidate the deleted handle */
+        sparse_array[state_index] = (state_value + HANDLE_GENER_ADD_PACKED) & HANDLE_GENER_MASK_PACKED;
+        if (dense_index != last_dense) { /* update the index arrays */
+            sparse_array[moved_index] = HANDLE_FLAG_MASK_PACKED | (dense_index & HANDLE_INDEX_MASK) | (moved_gener & HANDLE_GENER_MASK);
+            handle_array[dense_index] = handle_array[last_dense];
+        }
+    } index->ActiveCount -= delete_count;
+    /* second pass, move all of the actual data.
+     * the items in handle_array [index->ActiveCount, index->ActiveCount+delete_count) 
+     * can be used to retrieve the sparse index value stored at the given dense index.
+     */
+    for (i = index->ActiveCount, n = index->ActiveCount + delete_count; i < n; ++i) {
+        state_index = Table_HandleBitsExtractSparseIndex(handle_array[i]);
+        state_value = sparse_array[state_index];
+        dense_index = Table_SparseIndexExtractDenseIndex(state_value);
+        /* item at state_index was moved in handle_array from location i to location dense_index.
+         * if the state_index doesn't appear in the move history buffer, move the associated data.
+         */
+        for (j = 0, found = 0; j < HC && j < move_count; ++j) {
+            if (history[j] == state_index) {
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            MoveTableItemData(table  , dense_index, i);
+            history[move_count & HM] = state_index;
+            move_count++;
+        }
+    }
+#   undef HM
+#   undef HC
 }
 
 PIL_API(HANDLE_BITS)

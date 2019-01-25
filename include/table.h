@@ -331,6 +331,23 @@ TableDeleteId
     HANDLE_BITS         bits
 );
 
+/* @summary Invalidate multiple table item identifiers created by the TableCreateId function.
+ * The corresponding table data should have already had any necessary cleanup performed prior to calling this function.
+ * The caller is responsible for ensuring that the values supplied in the delete_ids array represent valid table entries.
+ * The caller is responsible for ensuring that the delete_ids array does not contain duplicate values.
+ * When deleting large numbers of items, this function may increase the table memory committment.
+ * @param table Pointer to a TABLE_DESC describing the table that created the item identifiers.
+ * @param delete_ids An array of delete_count HANDLE_BITS identifying the items to delete.
+ * @param delete_count The number of item identifiers in the delete_ids array.
+ */
+PIL_API(void)
+TableDeleteIds
+(
+    struct TABLE_DESC *table, 
+    HANDLE_BITS  *delete_ids, 
+    uint32_t    delete_count
+);
+
 /* @summary Remove a single external table item identifier inserted previously by TableInsertId.
  * The corresponding table data should have already had any necessary cleanup performed prior to calling this function.
  * The caller is responsible for ensuring that the value supplied for bits represents a valid table entry.

@@ -11,10 +11,10 @@ TableCreate
     struct TABLE_INIT *init
 )
 {
-    uint8_t              *index_ptr = NULL;
-    uint32_t            *sparse_ptr = NULL;
-    uint32_t            *handle_ptr = NULL;
-    void                *stream_ptr = NULL;
+    uint8_t              *index_ptr = nullptr;
+    uint32_t            *sparse_ptr = nullptr;
+    uint32_t            *handle_ptr = nullptr;
+    void                *stream_ptr = nullptr;
     size_t            sparse_commit = 0;
     size_t            handle_commit = 0;
     size_t           handle_reserve = 0;
@@ -24,8 +24,8 @@ TableCreate
     uint32_t           stream_count = init->StreamCount;
     uint32_t                      i;
 
-    if (init->Index == NULL) {
-        assert(init->Index != NULL);
+    if (init->Index == nullptr) {
+        assert(init->Index != nullptr);
         return -1;
     }
     if (init->TableCapacity < TABLE_MIN_OBJECT_COUNT) {
@@ -37,8 +37,8 @@ TableCreate
         return -1;
     }
     for (i = 0; i < stream_count; ++i) {
-        if (streams[i].Data == NULL) {
-            assert(streams[i].Data != NULL);
+        if (streams[i].Data == nullptr) {
+            assert(streams[i].Data != nullptr);
             return -1;
         }
         if (streams[i].Size == 0) {
@@ -52,30 +52,30 @@ TableCreate
     handle_commit  = init->InitialCommit * sizeof(uint32_t);
     handle_reserve = init->TableCapacity * sizeof(uint32_t);
     index_reserve  = sparse_commit + handle_reserve;
-    if ((index_ptr =(uint8_t*) VirtualAlloc(NULL, index_reserve, MEM_RESERVE, PAGE_NOACCESS)) == NULL) {
+    if ((index_ptr =(uint8_t*) VirtualAlloc(nullptr, index_reserve, MEM_RESERVE, PAGE_NOACCESS)) == nullptr) {
         goto cleanup_and_fail;
     }
     sparse_ptr = (uint32_t*)(index_ptr + 0);
     handle_ptr = (uint32_t*)(index_ptr + sparse_commit);
     for (i = 0 ; i < stream_count; ++i) {
-        if ((stream_ptr = VirtualAlloc(NULL, init->TableCapacity * streams[i].Size, MEM_RESERVE, PAGE_NOACCESS)) == NULL) {
+        if ((stream_ptr = VirtualAlloc(nullptr, init->TableCapacity * streams[i].Size, MEM_RESERVE, PAGE_NOACCESS)) == NULL) {
             goto cleanup_and_fail;
         }
         streams[i].Data->StorageBuffer = stream_ptr;
         streams[i].Data->ElementSize   = streams[i].Size;
     }
     /* the sparse portion of the index is always fully committed */
-    if (VirtualAlloc(sparse_ptr, sparse_commit, MEM_COMMIT, PAGE_READWRITE) == NULL) {
+    if (VirtualAlloc(sparse_ptr, sparse_commit, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
         goto cleanup_and_fail;
     }
     if (init->InitialCommit > 0) {
         /* the dense portion of the index and the data streams are committed on-demand */
-        if (VirtualAlloc(handle_ptr, handle_commit, MEM_COMMIT, PAGE_READWRITE) == NULL) {
+        if (VirtualAlloc(handle_ptr, handle_commit, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
             goto cleanup_and_fail;
         }
         for (i = 0; i < stream_count; ++i) {
             size_t     stream_commit  = init->InitialCommit * streams[i].Size;
-            if (VirtualAlloc(streams[i].Data->StorageBuffer , stream_commit, MEM_COMMIT, PAGE_READWRITE) == NULL) {
+            if (VirtualAlloc(streams[i].Data->StorageBuffer , stream_commit, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
                 goto cleanup_and_fail;
             }
         }
@@ -90,12 +90,12 @@ TableCreate
 
 cleanup_and_fail:
     for (i = 0; i < stream_count; ++i) {
-        if (streams[i].Data->StorageBuffer != NULL) {
+        if (streams[i].Data->StorageBuffer != nullptr) {
             VirtualFree(streams[i].Data->StorageBuffer, 0, MEM_RELEASE);
-            streams[i].Data->StorageBuffer = NULL;
+            streams[i].Data->StorageBuffer = nullptr;
         }
     }
-    if (index_ptr != NULL) {
+    if (index_ptr != nullptr) {
         VirtualFree(index_ptr, 0, MEM_RELEASE);
     }
     return -1;
@@ -129,12 +129,12 @@ TableEnsure
         return -1;
     }
     handle_commit = new_item_count * sizeof(uint32_t);
-    if (VirtualAlloc(index->HandleArray, handle_commit, MEM_COMMIT, PAGE_READWRITE) == NULL) {
+    if (VirtualAlloc(index->HandleArray, handle_commit, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
         return -1;
     }
     for (i = 0, n = table->StreamCount; i < n; ++i) {
         stream_commit = new_item_count * streams[i]->ElementSize;
-        if (VirtualAlloc(streams[i]->StorageBuffer, stream_commit, MEM_COMMIT, PAGE_READWRITE) == NULL) {
+        if (VirtualAlloc(streams[i]->StorageBuffer, stream_commit, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
             return -1;
         }
     }
@@ -154,13 +154,13 @@ TableDelete
     for (i = 0, n = table->StreamCount; i < n; ++i) {
         if (streams[i]->StorageBuffer) {
             VirtualFree(streams[i]->StorageBuffer, 0, MEM_RELEASE);
-            streams[i]->StorageBuffer = NULL;
+            streams[i]->StorageBuffer = nullptr;
         }
     }
     if (index && index->SparseIndex) {
         VirtualFree(index->SparseIndex, 0, MEM_RELEASE);
-        index->SparseIndex   = NULL;
-        index->HandleArray   = NULL;
+        index->SparseIndex   = nullptr;
+        index->HandleArray   = nullptr;
         index->ActiveCount   = 0;
         index->CommitCount   = 0;
         index->TableCapacity = 0;
