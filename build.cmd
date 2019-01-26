@@ -104,7 +104,7 @@ FOR %%x IN ("%MAINDIR%"\*.c*) DO (
     IF NOT EXIST "%EXEOUTPUTDIR%\%%~nx" MKDIR "%EXEOUTPUTDIR%\%%~nx"
     PUSHD "%EXEOUTPUTDIR%\%%~nx"
     ECHO Building "%EXEOUTPUTDIR%\%%~nx\%%~nx.exe"...
-    cl.exe %CPPFLAGS% "%%x" %DEFINES% %LNKFLAGS% /Fe%%~nx.exe /link /LIBPATH:"%LIBSDIR%" /LIBPATH:"%LIBOUTPUTDIR%"
+    cl.exe %CPPFLAGS% "%%x" %DEFINES% libpil.lib %LNKFLAGS% /Fe%%~nx.exe /link /LIBPATH:"%LIBSDIR%" /LIBPATH:"%LIBOUTPUTDIR%"
     IF %ERRORLEVEL% NEQ 0 (
         ECHO ERROR: Build failed for %%~nx.exe.
         SET BUILD_FAILED=1
