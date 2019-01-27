@@ -183,32 +183,145 @@ PrintContainer
     printf("\n");
 }
 
+static int
+Test_Generation
+(
+    void
+)
+{   /* create and delete one item at a time so that the item gets created in the same slot.
+     * ensure that the generation portion of the handle is set correctly. */
+    int     res = 1;
+    uint32_t  i;
+    CONTAINER c;
+
+    CreateContainer(&c, 4);
+    for (i = 0; i < HANDLE_GENER_MASK+1; ++i) {
+        HANDLE_BITS h = ContainerPush(&c,  i);
+        if (HandleBitsExtractGeneration(h) != (i & HANDLE_GENER_MASK)) {
+            assert(HandleBitsExtractGeneration(h) == (i & HANDLE_GENER_MASK));
+            res  = 0; goto end;
+        } ContainerDel1(&c, h);
+    } res = VerifyTableIndex(&c.TableIndex);
+
+end:
+    DeleteContainer(&c);
+    return res;
+}
+
+static int
+Test_FullStateValidationOne
+(
+    void
+)
+{   /* allocate items, one by one, validating after each allocation.
+     * then delete each item, one at a time, and validate after each deletion. */
+#   define C    1024
+    HANDLE_BITS *handles =(HANDLE_BITS*) malloc(C * sizeof(HANDLE_BITS));
+    int              res = 1;
+    CONTAINER          c;
+    int             i, j;
+
+    CreateContainer(&c, C);
+    for (j = 0; j < 64; ++j) {
+        for (i = 0; i < C; ++i) { /* allocate one at a time */
+            if ((handles[i] = ContainerPush(&c, i)) == HANDLE_BITS_INVALID) {
+                assert(handles[i] != HANDLE_BITS_INVALID);
+                res  = 0; goto end;
+            }
+            if (VerifyTableIndex(&c.TableIndex) == 0) {
+                assert(0 && "Table index verification failed");
+                res  = 0; goto end;
+            }
+        }
+        for (i = 0; i < C; ++i) { /* delete each even-indexed item */
+            if ((i & 1) == 0) {
+                if (ContainerDel1(&c, handles[i]) != i) {
+                    assert(0 && "ContainerDel1(&c, handles[i]) == i");
+                    res  = 0; goto end;
+                }
+                if (VerifyTableIndex(&c.TableIndex) == 0) {
+                    assert(0 && "Table index verification failed (delete even)");
+                    res  = 0; goto end;
+                }
+            }
+        }
+        for (i = 0; i < C; ++i) { /* delete each odd-indexed item */
+            if ((i & 1) == 1) {
+                if (ContainerDel1(&c, handles[i]) != i) {
+                    assert(0 && "ContainerDel1(&c, handles[i]) == i");
+                    res  = 0; goto end;
+                }
+                if (VerifyTableIndex(&c.TableIndex) == 0) {
+                    assert(0 && "Table index verification failed (delete even)");
+                    res  = 0; goto end;
+                }
+            }
+        }
+    }
+
+end:
+    DeleteContainer(&c);
+    free(handles);
+    return res;
+#   undef  C
+}
+
+static int
+Test_FullStateValidationMany
+(
+    void
+)
+{   /* allocate items, one by one, validating after each allocation.
+     * then delete each item, one at a time, and validate after each deletion. */
+#   define C    1024
+    HANDLE_BITS *handles =(HANDLE_BITS*) malloc(C * sizeof(HANDLE_BITS));
+    int              res = 1;
+    CONTAINER          c;
+    int             i, j;
+
+    assert(C%4 == 0);
+
+    CreateContainer(&c, C);
+    for (j = 0; j < 64; ++j) {
+        for (i = 0; i < C; ++i) { /* allocate one at a time */
+            if ((handles[i] = ContainerPush(&c, i)) == HANDLE_BITS_INVALID) {
+                assert(handles[i] != HANDLE_BITS_INVALID);
+                res  = 0; goto end;
+            }
+            if (VerifyTableIndex(&c.TableIndex) == 0) {
+                assert(0 && "Table index verification failed");
+                res  = 0; goto end;
+            }
+        }
+        for (i = 0; i < 4; ++i) { /* delete C/4 items at a time */
+            ContainerDelN(&c, &handles[i * (C/4)], C/4);
+            if (VerifyTableIndex(&c.TableIndex) == 0) {
+                assert(0 && "Table index verification failed (many)");
+                res  = 0; goto end;
+            }
+        }
+    }
+
+end:
+    DeleteContainer(&c);
+    free(handles);
+    return res;
+#   undef  C
+}
+
 int main
 (
     int    argc, 
     char **argv
 )
 {
-    CONTAINER        c;
-    HANDLE_BITS ids[4];
-    HANDLE_BITS del[2];
-
     (void) argc;
     (void) argv;
 
-    CreateContainer(&c, 4);
-    ids[0] = ContainerPush(&c, 1);
-    ids[1] = ContainerPush(&c, 2);
-    ids[2] = ContainerPush(&c, 3);
-    ids[3] = ContainerPush(&c, 4);
-    PrintContainer(&c);
-    ContainerDel1(&c, ids[1]);
-    PrintContainer(&c);
-    del[0] = ids[2];
-    del[1] = ids[0];
-    ContainerDelN(&c, del, 2);
-    PrintContainer(&c);
-    DeleteContainer(&c);
+    Test_Generation();
+    Test_FullStateValidationOne();
+    Test_FullStateValidationMany();
+
     return 0;
 }
 
