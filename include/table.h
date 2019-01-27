@@ -476,6 +476,17 @@ SparseIndexExtractDenseIndex
     uint32_t index_value
 );
 
+/* @summary Perform an internal self-consistency check on a TABLE_INDEX structure.
+ * Intended to be used for debugging purposes only. Asserts fire for validation errors in debug builds.
+ * @param index The TABLE_INDEX to validate.
+ * @return Non-zero if the index is valid, or zero if the index is not valid.
+ */
+PIL_API(int)
+VerifyTableIndex
+(
+    struct TABLE_INDEX *index
+);
+
 /* @summary Given a pointer to a particular data element within a TABLE_DATA buffer, retrieve the corresponding dense array index of the element.
  * @param table_data The TABLE_DATA from which element_ptr was obtained.
  * @param element_ptr The address of the element within the TABLE_DATA buffer.

@@ -167,7 +167,7 @@ TableDeleteId
             handle_array[dense_index] = moved_value;
         }
         /* return sparse_index to the free list */
-        handle_array[last_dense] = sparse_index;
+        handle_array[last_dense] = (sparse_index << HANDLE_INDEX_SHIFT) | ((generation + HANDLE_GENER_ADD_PACKED) & HANDLE_GENER_MASK);
         index->ActiveCount = last_dense;
     }
     return moved_value;
@@ -189,9 +189,11 @@ TableDeleteIds
     uint32_t  active_count = index->ActiveCount;
     uint32_t    last_dense = index->ActiveCount - 1;
     uint32_t    move_count = 0;
+    uint32_t    generation;
     uint32_t   state_value; /* read from sparse_array  */
     uint32_t   state_index; /* index into sparse_array */
     uint32_t   dense_index; /* index into handle_array */
+    uint32_t deleted_index; /* index into sparse_array */
     uint32_t   moved_index; /* index into sparse_array */
     uint32_t   moved_value; /* read from handle_array  */
     uint32_t   moved_gener;
@@ -213,7 +215,7 @@ TableDeleteIds
      * optimize for this case by tracking which items are moved and where they were moved to. 
      * then, perform a second pass so that any moved item gets moved at most once.
      */
-    for (i = 0; i < delete_count; ++i, --last_dense) {
+    for (i = 0; i < delete_count; ++i) {
         state_index = Table_HandleBitsExtractSparseIndex(delete_ids[i]);
         state_value = sparse_array[state_index];
         dense_index = Table_SparseIndexExtractDenseIndex(state_value);
@@ -223,31 +225,36 @@ TableDeleteIds
         /* invalidate the deleted handle */
         sparse_array[state_index] = (state_value + HANDLE_GENER_ADD_PACKED) & HANDLE_GENER_MASK_PACKED;
         if (dense_index != last_dense) { /* update the index arrays */
-            sparse_array[moved_index] = HANDLE_FLAG_MASK_PACKED | (dense_index & HANDLE_INDEX_MASK) | (moved_gener & HANDLE_GENER_MASK);
+            sparse_array[moved_index] = HANDLE_FLAG_MASK_PACKED | (dense_index << HANDLE_INDEX_SHIFT) | (moved_gener << HANDLE_GENER_SHIFT);
             handle_array[dense_index] = handle_array[last_dense];
-        }
+        } last_dense--;
     } index->ActiveCount -= delete_count;
     /* second pass, move all of the actual data.
      * the items in handle_array [index->ActiveCount, index->ActiveCount+delete_count) 
      * can be used to retrieve the sparse index value stored at the given dense index.
      */
-    for (i = index->ActiveCount, n = index->ActiveCount + delete_count; i < n; ++i) {
+    for (i = index->ActiveCount, n = index->ActiveCount + delete_count, j = 0; i < n; ++i, ++j) {
         state_index = Table_HandleBitsExtractSparseIndex(handle_array[i]);
         state_value = sparse_array[state_index];
-        dense_index = Table_SparseIndexExtractDenseIndex(state_value);
-        /* item at state_index was moved in handle_array from location i to location dense_index.
-         * if the state_index doesn't appear in the move history buffer, move the associated data.
-         */
-        for (j = 0, found = 0; j < HC && j < move_count; ++j) {
-            if (history[j] == state_index) {
-                found = 1;
-                break;
+        if (Table_SparseIndexExtractLive(state_value) != 0 && (dense_index = Table_SparseIndexExtractDenseIndex(state_value)) != i) {
+            /* item at state_index was moved in handle_array from location i to location dense_index.
+             * if the state_index doesn't appear in the move history buffer, move the associated data.
+             */
+            for (j = 0, found = 0; j < HC && j < move_count; ++j) {
+                if (history[j] == state_index) {
+                    found = 1;
+                    break;
+                }
             }
-        }
-        if (found == 0) {
-            MoveTableItemData(table  , dense_index, i);
-            history[move_count & HM] = state_index;
-            move_count++;
+            if (found == 0) {
+                MoveTableItemData(table  , dense_index, i);
+                history[move_count & HM] = state_index;
+                move_count++;
+            }
+            /* return the sparse index to the free list */
+            generation      = Table_HandleBitsExtractGeneration(delete_ids[j]);
+            deleted_index   = Table_HandleBitsExtractSparseIndex(delete_ids[j]);
+            handle_array[i] =(deleted_index << HANDLE_INDEX_SHIFT) | ((generation + HANDLE_GENER_ADD_PACKED) & HANDLE_GENER_MASK);
         }
     }
 #   undef HM
@@ -442,6 +449,53 @@ SparseIndexExtractDenseIndex
 )
 {
     return Table_SparseIndexExtractDenseIndex(index_value);
+}
+
+PIL_API(int)
+VerifyTableIndex
+(
+    struct TABLE_INDEX *index
+)
+{
+    uint32_t *sparse = index->SparseIndex;
+    uint32_t *handle = index->HandleArray;
+    uint32_t   count = index->ActiveCount;
+    uint32_t  inited = index->HighWatermark;
+    uint32_t       i;
+
+    for (i = 0; i < count; ++i) {
+        HANDLE_BITS h = handle[i];
+        uint32_t   si = HandleBitsExtractSparseIndex(h);
+        uint32_t    s = sparse[si];
+        if (HandleBitsExtractLive(h) == 0 || SparseIndexExtractLive(s) == 0) {
+            /* both should say that they're live */
+            assert(HandleBitsExtractLive(h) != 0);
+            assert(SparseIndexExtractLive(s) != 0);
+            return 0;
+        }
+        if (HandleBitsExtractGeneration(h) != SparseIndexExtractGeneration(s)) {
+            /* generation values must match */
+            assert(HandleBitsExtractGeneration(h) == SparseIndexExtractGeneration(s));
+            return 0;
+        }
+        if (SparseIndexExtractDenseIndex(s) != i) {
+            /* dense index should point at this slot */
+            assert(SparseIndexExtractDenseIndex(s) == i);
+            return 0;
+        }
+    }
+    for (i = count; i < inited; ++i) {
+        HANDLE_BITS h = handle[i];
+        uint32_t   si = HandleBitsExtractSparseIndex(h);
+        uint32_t    s = sparse[si];
+        if (HandleBitsExtractLive(h) != 0 || SparseIndexExtractLive(s) != 0) {
+            /* both should say that they're dead */
+            assert(HandleBitsExtractLive(h) == 0);
+            assert(SparseIndexExtractLive(s) == 0);
+            return 0;
+        }
+    }
+    return 1;
 }
 
 PIL_API(uint32_t)
