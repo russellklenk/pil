@@ -84,6 +84,12 @@
     <ClInclude Include="..\..\..\include\win32\fileio_win32.h">
       <Filter>Header Files\win32</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\gpu_program_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\gpu_program.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\context.cc">

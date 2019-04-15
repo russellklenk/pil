@@ -14,6 +14,7 @@
     <ClInclude Include="..\..\..\include\display.h" />
     <ClInclude Include="..\..\..\include\dynlib.h" />
     <ClInclude Include="..\..\..\include\fileio.h" />
+    <ClInclude Include="..\..\..\include\gpu_program.h" />
     <ClInclude Include="..\..\..\include\memio.h" />
     <ClInclude Include="..\..\..\include\memmgr.h" />
     <ClInclude Include="..\..\..\include\pil.h" />
@@ -27,6 +28,7 @@
     <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h" />
     <ClInclude Include="..\..\..\include\win32\dynlib_win32.h" />
     <ClInclude Include="..\..\..\include\win32\fileio_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\gpu_program_d3d12.h" />
     <ClInclude Include="..\..\..\include\win32\pil_win32.h" />
     <ClInclude Include="..\..\..\include\win32\strlib_win32.h" />
     <ClInclude Include="..\..\..\include\win32\win32api_win32.h" />
