@@ -58,8 +58,18 @@
  * @return A pointer to the start of the allocated memory block, or NULL.
  */
 #ifndef MemoryArenaAllocateHostArrayRaw
-#define MemoryArenaAllocateHostArrayRaw(_arena, _objsize, _align, _count)  \
+#define MemoryArenaAllocateHostArrayRaw(_arena, _objsize, _align, _count)      \
     ((uint8_t*) MemoryArenaAllocateHost(NULL, (_arena), (_objsize) * (_count), (_align)))
+#endif
+
+/* @summary Allocate a fixed-size array on the system heap.
+ * @param _type A typename, such as int, specifying the type being allocated.
+ * @param _count The number of elements in the array.
+ * @return A pointer to the start of the allocated array, or NULL.
+ */
+#ifndef HostMemoryAllocateHeapArray
+#define HostMemoryAllocateHeapArray(_type, _count)                             \
+    ((_type*) HostMemoryAllocateHeap(NULL, sizeof(_type) * (_count), PIL_ALIGN_OF(_type)))
 #endif
 
 /* @summary Forward-declare the types exported by this module.
