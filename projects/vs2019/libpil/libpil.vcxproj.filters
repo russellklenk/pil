@@ -1,0 +1,147 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\win32">
+      <UniqueIdentifier>{55464399-ea0f-441f-acc5-90feefc38543}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\win32">
+      <UniqueIdentifier>{d1e0ca79-f7c9-4cd2-980e-9865debd597e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\d3d12">
+      <UniqueIdentifier>{51c8e08a-46dc-4396-b1ff-482ecd9604e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\d3d12">
+      <UniqueIdentifier>{42760c90-cafd-40be-8310-029ea7537a58}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\include\pil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\dynlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\memmgr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\table.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\pil_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\dynlib_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\win32api_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\display_device_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\display_system_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\display_window_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\display.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\memio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\strlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\strlib_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\fileio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\fileio_win32.h">
+      <Filter>Header Files\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\win32\gpu_program_d3d12.h">
+      <Filter>Header Files\d3d12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\gpu_program.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\context.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\memmgr.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\version.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\memmgr_win32.cc">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\dynlib_win32.cc">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\table_win32.cc">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\win32api_win32.cc">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\table.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\d3d12api_win32.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\d3dcompilerapi_win32.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\display_device_d3d12.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\display_system_d3d12.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\display_window_d3d12.cc">
+      <Filter>Source Files\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\memio.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\strlib_win32.cc">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\win32\fileio_win32.cc">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

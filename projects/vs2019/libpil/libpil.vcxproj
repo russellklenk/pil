@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\include\display.h" />
+    <ClInclude Include="..\..\..\include\dynlib.h" />
+    <ClInclude Include="..\..\..\include\fileio.h" />
+    <ClInclude Include="..\..\..\include\gpu_program.h" />
+    <ClInclude Include="..\..\..\include\memio.h" />
+    <ClInclude Include="..\..\..\include\memmgr.h" />
+    <ClInclude Include="..\..\..\include\pil.h" />
+    <ClInclude Include="..\..\..\include\strlib.h" />
+    <ClInclude Include="..\..\..\include\table.h" />
+    <ClInclude Include="..\..\..\include\win32\d3d12api_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\d3dcompilerapi_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\display_device_d3d12.h" />
+    <ClInclude Include="..\..\..\include\win32\display_system_d3d12.h" />
+    <ClInclude Include="..\..\..\include\win32\display_window_d3d12.h" />
+    <ClInclude Include="..\..\..\include\win32\dxgiapi_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\dynlib_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\fileio_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\gpu_program_d3d12.h" />
+    <ClInclude Include="..\..\..\include\win32\pil_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\strlib_win32.h" />
+    <ClInclude Include="..\..\..\include\win32\win32api_win32.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\context.cc" />
+    <ClCompile Include="..\..\..\src\memio.cc" />
+    <ClCompile Include="..\..\..\src\memmgr.cc" />
+    <ClCompile Include="..\..\..\src\table.cc" />
+    <ClCompile Include="..\..\..\src\version.cc" />
+    <ClCompile Include="..\..\..\src\win32\d3d12api_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\d3dcompilerapi_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\display_device_d3d12.cc" />
+    <ClCompile Include="..\..\..\src\win32\display_system_d3d12.cc" />
+    <ClCompile Include="..\..\..\src\win32\display_window_d3d12.cc" />
+    <ClCompile Include="..\..\..\src\win32\dxgiapi_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\dynlib_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\fileio_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\memmgr_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\strlib_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\table_win32.cc" />
+    <ClCompile Include="..\..\..\src\win32\win32api_win32.cc" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{EB2B9688-6244-41D6-9F1F-1451F118609B}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>libpil</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\..\include;..\..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeaderFile />
+      <PrecompiledHeaderOutputFile />
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\..\include;..\..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <PrecompiledHeaderFile />
+      <PrecompiledHeaderOutputFile />
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

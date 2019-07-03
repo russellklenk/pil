@@ -14,50 +14,133 @@
 #   ifndef __PIL_H__
 #       include "pil.h"
 #   endif
+#   ifndef __PIL_MEMMGR_H__
+#       include "memmgr.h"
+#   endif
+#   ifndef __PIL_TABLE_H__
+#       include "table.h"
+#   endif
 #endif
 
-/* You don't need a device to compile programs or create a program cache */
-
-struct GPU_PROGRAM_DESC;
-struct GPU_PROGRAM_CACHE;
+struct GPU_PROGRAM_TABLE;
 struct GPU_PROGRAM_BYTECODE;
-struct GPU_PROGRAM_CACHE_INIT;
+struct GPU_PROGRAM_TABLE_INIT;
+
+/* @summary Define constants related to GPU program objects.
+ * GPU_PROGRAM_BYTECODE_STREAM_INDEX: The zero-based index of the data stream of the GPU_PROGRAM_BYTECODE.
+ * GPU_PROGRAM_TABLE_STREAM_COUNT   : The number of data streams in a GPU_PROGRAM_TABLE.
+ * GPU_PROGRAM_COUNT_MAX            : The maximum number of programs that can be loaded into a single GPU_PROGRAM_TABLE.
+ */
+#ifndef GPU_PROGRAM_CONSTANTS
+#   define GPU_PROGRAM_CONSTANTS
+#   define GPU_PROGRAM_BYTECODE_STREAM_INDEX                                   0
+#   define GPU_PROGRAM_TABLE_STREAM_COUNT                                      1
+#   define GPU_PROGRAM_COUNT_MAX                                               8192
+#endif
+
+/* @summary Retrieve the number of loaded GPU programs.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @return The number of GPU program bytecode objects loaded into the table.
+ */
+#ifndef GpuProgramTableCount
+#define GpuProgramTableCount(_t)                                               \
+    Table_GetCount(&(_t)->TableDesc)
+#endif
+
+/* @summary Retrieve the maximum number of loaded GPU programs.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @return The maximum number of loaded GPU programs.
+ */
+#ifndef GpuProgramTableCapacity
+#define GpuProgramTableCapacity(_t)                                            \
+    Table_GetCapacity(&(_t)->TableDesc)
+#endif
+
+/* @summary Retrieve a pointer to the first element in the active handle stream for the set of GPU program bytecode.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @return A pointer (HANDLE_BITS*) to the first active identifier in the table. If equal to the address returned by GpuProgramTableBytecodeHandleEnd(_t), the table is empty and the returned pointer must not be dereferenced.
+ */
+#ifndef GpuProgramTableProgramHandleBegin
+#define GpuProgramTableProgramHandleBegin(_t)                                  \
+    Table_GetHandleBegin(&(_t)->TableDesc)
+#endif
+
+/* @summary Retrieve a pointer to one-past the last element in the active handle stream for the set of GPU program bytecode.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @return A pointer (HANDLE_BITS*) to one-past the last active identifier. Do not dereference the returned pointer.
+ */
+#ifndef GpuProgramTableProgramHandleEnd
+#define GpuProgramTableProgramHandleEnd(_t)                                    \
+    Table_GetHandleEnd(&(_t)->TableDesc)
+#endif
+
+/* @summary Retrieve the _i'th handle of a GPU program.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @param _i The zero-based index of the program handle to retrieve.
+ * @return The _i'th program handle.
+ */
+#ifndef GpuProgramTableHandleAt
+#define GpuProgramTableHandleAt(_t, _i)                                        \
+    Table_GetHandle(&(_t)->TableDesc, _i)
+#endif
+
+/* @summary Retrieve a pointer to the first GPU_PROGRAM_BYTECODE data record.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @return A pointer to the first active GPU_PROGRAM_BYTECODE record. If the returned pointer is the same as GpuProgramTableBytecodeStreamEnd, the table is empty and the returned pointer must not be dereferenced.
+ */
+#ifndef GpuProgramTableBytecodeStreamBegin
+#define GpuProgramTableBytecodeStreamBegin(_t)                                 \
+    Table_GetStreamBegin(GPU_PROGRAM_BYTECODE, &(_t)->TableDesc, GPU_PROGRAM_BYTECODE_STREAM_INDEX)
+#endif
+
+/* @summary Retrieve a pointer to one-past the last GPU_PROGRAM_BYTECODE data record.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @return A pointer to one-past the last active GPU_PROGRAM_BYTECODE data record. Do not dereference the returned pointer.
+ */
+#ifndef GpuProgramTableBytecodeStreamEnd
+#define GpuProgramTableBytecodeStreamEnd(_t)                                   \
+    Table_GetStreamEnd  (GPU_PROGRAM_BYTECODE, &(_t)->TableDesc, GPU_PROGRAM_BYTECODE_STREAM_INDEX)
+#endif
+
+/* @summary Retrieve a pointer to the _i'th GPU_PROGRAM_BYTECODE record.
+ * @param _t A pointer to a GPU_PROGRAM_TABLE instance.
+ * @param _i The zero-based index of the item to retrieve.
+ * @return A pointer to the _i'th data record.
+ */
+#ifndef GpuProgramTableBytecodeStreamAt
+#define GpuProgramTableBytecodeStreamAt(_t, _i)                                \
+    Table_GetStreamElement(GPU_PROGRAM_BYTECODE, &(_t)->TableDesc, GPU_PROGRAM_BYTECODE_STREAM_INDEX, _i)
+#endif
 
 /* @summary Define the data describing compiled GPU program bytecode.
  * GPU program bytecode is converted into an architecture-specific representation by the GPU driver.
  */
 typedef struct GPU_PROGRAM_BYTECODE {
-    uint8_t                        *ByteCode;                                  /* Pointer to the buffer containing the compiled bytecode. */
+    ADDRESS_OR_OFFSET               ByteCode;                                  /* Pointer to the buffer containing the compiled bytecode, or the offset of the compiled bytecode within the buffer. */
     uint64_t                        SizeBytes;                                 /* The number of bytes in the ByteCode buffer that are valid. */
+    uint32_t                        ProgramType;                               /* A value of the GPU_PROGRAM_TYPE enumeration indicating the type of GPU program. */
+    uint32_t                        ProgramFlags;                              /* One or more bitwise ORd values of the GPU_PROGRAM_FLAGS enumeration specifying usage flags for the GPU program. */
 } GPU_PROGRAM_BYTECODE;
 
-/* @summary Define additional data optionally supplied with GPU_PROGRAM_BYTECODE for debugging purposes.
+/* @summary Define the data required to create a table of GPU programs.
  */
-typedef struct GPU_PROGRAM_DEBUG_INFO {
-    char_native_t                  *SourcePath;                                /* Pointer to a nul-terminated string specifying the path of the main HLSL source file. This may point to an empty string. */
-    char                           *EntryPoint;                                /* Pointer to a nul-terminated string specifying the the program entry point. This may point to an empty string. */
-    int64_t                         LastWriteTime;                             /* The last write time of the most recently modified HLSL source file(s), specified in UNIX timestamp format. */
-    int64_t                         LastBuildTime;                             /* The last write time of the bytecode file or of the last compilation, specified in UNIX timestamp format. */
-} GPU_PROGRAM_DEBUG_INFO;
+typedef struct GPU_PROGRAM_TABLE_INIT {
+    uint64_t                        CommitBytes;                               /* The number of bytes of GPU program bytecode storage that should initially be committed. */
+    uint64_t                        CapacityBytes;                             /* The maximum number of bytes of GPU program bytecode that can be loaded into the table. */
+    uint32_t                        ProgramCapacity;                           /* The maximum number of GPU program objects that can be stored in the table. */
+} GPU_PROGRAM_TABLE_INIT;
 
-/* @summary Define the data required to create a GPU program cache.
- * All GPU programs in a program cache are of the same type (for example, all fragment programs).
- * Several fields are required only if programs need to be compiled at runtime. 
- * If runtime compilation is not needed, the DefineSymbols, DefineValues, and IncludePaths fields can all be NULL, and DefineCount and IncludeCount should be set to 0.
- * All programs in the cache share the same compilation attributes.
- * Programs can be added to the cache one-by-one, or in batches, but the entire cache must be dropped at once.
+/* @summary Define the data associated with a set of GPU program objects.
+ * At a minimum, the table stores the bytecode for each GPU program.
  */
-typedef struct GPU_PROGRAM_CACHE_INIT {
-    char const                     *TargetModel;                               /* A nul-terminated string specifying the shader model target. This may */
-    char const                    **DefineSymbols;                             /* An array of nul-terminated strings specifying the preprocessor symbols to define when compiling GPU program source code. */
-    char const                    **DefineValues;                              /* An array of nul-terminated strings specifying the values of the preprocessor symbols when compiling GPU program source code. */
-    char_native_t const           **IncludePaths;                              /* An array of nul-terminated strings specifying the absolute paths of the directories to search for includes. */
-    uint32_t                        IncludePathCount;                          /* The number of nul-terminated path strings in the IncludePaths array. */
-    uint32_t                        DefineCount;                               /* The number of nul-terminated symbols and values in the DefineSymbols and DefineValues arrays. */
-    uint32_t                        ProgramCapacity;                           /* The maximum number of GPU programs that can be stored in the cache. */
-    uint32_t                        ProgramType;                               /* One of the values of the GPU_PROGRAM_TYPE enumeration specifying the type of GPU programs in the cache. All programs in the cache must be of the same type. */
-    uint32_t                        ProgramCacheFlags;                         /* One or more bitwise-OR'd values of the GPU_PROGRAM_CACHE_FLAGS enumeration. */
-} GPU_PROGRAM_CACHE_INIT;
+typedef struct GPU_PROGRAM_TABLE {
+    MEMORY_ARENA                    Allocator;                                 /* The arena allocator used to sub-allocate bytecode blobs. */
+    TABLE_DESC                      TableDesc;                                 /* The table descriptor, used for calling the data table functions. */
+    TABLE_INDEX                     TableIndex;                                /* The table index used to map GPU_PROGRAM_HANDLE to a dense array index. */
+    TABLE_DATA                      BytecodeData;                              /* The table data storing the stream of GPU_PROGRAM_BYTECODE instances. */
+    TABLE_DATA                     *TableStreams[1];                           /* An array of pointers to the table data streams. */
+    MEMORY_BLOCK                    MemoryBlock;                               /* The memory block used to store GPU program bytecode. */
+} GPU_PROGRAM_TABLE;
 
 /* @summary Define the supported types of GPU programs.
  */
@@ -69,67 +152,15 @@ typedef enum GPU_PROGRAM_TYPE {
     GPU_PROGRAM_TYPE_GEOMETRY                 =  4,                            /* The program cache contains programs for emitting or processing geometric primitives. */
 } GPU_PROGRAM_TYPE;
 
-/* @summary Define a series of flags that can be bitwise-OR'd to specify special program cache attributes.
+/* @summary Define flags tht can be bitwise ORd to describe GPU program usage.
  */
-typedef enum GPU_PROGRAM_CACHE_FLAGS {
-    GPU_PROGRAM_CACHE_FLAGS_NONE              = (0UL << 0),                    /* No special flags are set. */
-    GPU_PROGRAM_CACHE_BUILD_ONLY              = (1UL << 0),                    /* The program cache is being used to store compiled program code as part of a build process. */
-    GPU_PROGRAM_CACHE_FLAGS_COMPILER          = (1UL << 1),                    /* Require runtime compilation support. */
-    GPU_PROGRAM_CACHE_FLAGS_DEBUG             = (1UL << 2),                    /* Enable debugging features. */
-    GPU_PROGRAM_CACHE_FLAGS_SKIP_OPTIMIZATION = (1UL << 3),                    /* Do not optimize compiled programs. */
-} GPU_PROGRAM_CACHE_FLAGS;
+typedef enum GPU_PROGRAM_FLAGS {
+    GPU_PROGRAM_FLAGS_NONE                    = (0UL <<  0),                   /* No program usage flags are specified. */
+} GPU_PROGRAM_FLAGS;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* @summary Create a new program cache into which bytecode will be loaded.
- * The program cache supports explicit storing of externally-compiled bytecode as well as runtime compilation.
- * @param init Data used to configure creation of the cache.
- * @return A pointer to the empty program cache object, or NULL.
- */
-PIL_API(struct GPU_PROGRAM_CACHE*)
-GpuProgramCacheCreate
-(
-    struct GPU_PROGRAM_CACHE_INIT *init
-);
-
-/* @summary Delete a program cache and unload all of its stored bytecode.
- * @param cache The program cache to delete.
- */
-PIL_API(void)
-GpuProgramCacheDelete
-(
-    struct GPU_PROGRAM_CACHE *cache
-);
-
-PIL_API(uint32_t)
-GpuProgramCacheGetProgramCount
-(
-    struct GPU_PROGRAM_CACHE *cache
-);
-
-PIL_API(int)
-GpuProgramCacheGetProgram
-(
-    struct GPU_PROGRAM_BYTECODE *desc, 
-    struct GPU_PROGRAM_CACHE   *cache, 
-    uint32_t            program_index
-);
-
-PIL_API(int)
-GpuProgramCacheStoreProgram
-(
-    uint32_t             *o_program_index, 
-    struct GPU_PROGRAM_BYTECODE *bytecode, 
-    struct GPU_PROGRAM_DEBUG_INFO  *debug, 
-    struct GPU_PROGRAM_CACHE       *cache
-);
-
-// save/load needs to follow request/complete pattern so it can run async.
-// compile needs to follow request/complete pattern so it can run async.
-// two ways to put something into the cache - store precompiled bytecode, or runtime compile.
-// support a GetCacheInfo like we do for string tables?
 
 #ifdef __cplusplus
 }; /* extern "C" */
